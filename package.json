@@ -1,0 +1,34 @@
+{
+  "name": "deba",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "./node_modules/.bin/tsc",
+    "deba": "npm run build && node build/cli.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/nqounet/deba.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bin": {
+    "deba": "./src/cli.ts"
+  },
+  "bugs": {
+    "url": "https://github.com/nqounet/deba/issues"
+  },
+  "homepage": "https://github.com/nqounet/deba#readme",
+  "devDependencies": {
+    "@types/node": "^25.3.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "commander": "^14.0.3",
+    "yaml": "^2.8.2"
+  }
+}
