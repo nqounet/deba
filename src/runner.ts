@@ -4,6 +4,27 @@ import { generateContent } from './ai.js';
 import { buildPhaseBPrompt } from './prompt.js';
 import { saveSnapshot } from './snapshot.js';
 import { StepBatch } from './dag.js';
+import { exec } from 'child_process'; // child_processモジュールをインポート
+
+/**
+ * npm test を実行し、その結果を返す。
+ * @returns Promise<{ stdout: string, stderr: string, code: number | null }> npm test の標準出力と標準エラー出力
+ */
+export function executeTests(): Promise<{ stdout: string, stderr: string, code: number | null }> {
+  return new Promise((resolve, reject) => {
+    console.log('\n--- Running npm test ---');
+    exec('npm test', (error, stdout, stderr) => {
+      if (error) {
+        console.error(`❌ npm test failed with exit code ${error.code}`);
+        // エラーが発生した場合も、stdoutとstderrは返す
+        resolve({ stdout, stderr, code: error.code ?? null });
+      } else {
+        console.log('✅ npm test completed successfully.');
+        resolve({ stdout, stderr, code: 0 });
+      }
+    });
+  });
+}
 
 /**
  * 単一の実行ステップを処理し、プロンプト生成・AI呼び出し・スナップショット保存を行う。
@@ -48,8 +69,12 @@ export async function executeStep(step: any, cautions: any[], taskId: string): P
 
   // --- 実ファイルへの適用 ---
   if (Array.isArray(step.target_files) && step.target_files.length > 0) {
-    // 現在の軽量モデルプロンプト仕様（1ファイルまるごと出力）に基づき、
-    // 最初の対象ファイルに対して書き込みを行う
+    // AIの回答が AMBIGUITY: で始まる場合は、ファイルへの書き込みをスキップする
+    if (text.trim().startsWith('AMBIGUITY:')) {
+      console.warn(`⚠️ Skipped applying changes because AI reported ambiguity.`);
+      return text;
+    }
+
     const targetFile = step.target_files[0];
     try {
       const absPath = path.resolve(process.cwd(), targetFile);
@@ -84,7 +109,33 @@ export async function executeBatches(batches: StepBatch[], cautions: any[], task
     await Promise.all(executionPromises);
     
     console.log(`✅ Batch ${i + 1} completed.`);
+
+    // 各バッチ処理の完了後にnpm testを実行する
+    let testResult = await executeTests();
+
+    // npm test が失敗した場合、1回だけリトライする
+    if (testResult.code !== 0) {
+      console.log(`\n❌ バッチ ${i + 1} の後で npm test が失敗しました。一度リトライします...`);
+      // エラーメッセージをcautionとしてプロンプトに含める
+      const testErrorMessage = `前回の 'npm test' で以下のエラーが発生しました。この問題を修正してください:\n${testResult.stderr}`;
+      const retryCautions = [...cautions, testErrorMessage];
+
+      // リトライ用のステップを並列実行
+      const retryExecutionPromises = batch.steps.map(step => executeStep(step, retryCautions, taskId));
+      await Promise.all(retryExecutionPromises);
+
+      // リトライ後のテスト
+      console.log('\n--- リトライ後に npm test を実行 ---');
+      testResult = await executeTests();
+
+      if (testResult.code !== 0) {
+        console.error(`❌ バッチ ${i + 1} のリトライ後も npm test が失敗しました。実行を中断します。`);
+        throw new Error(`npm test がリトライ後も失敗しました。詳細:\n${testResult.stderr}`);
+      } else {
+        console.log(`✅ バッチ ${i + 1} のリトライ後、npm test が成功しました。`);
+      }
+    }
   }
 
-  console.log('\nAll batches successfully executed.');
+  console.log('\nすべてのバッチが正常に実行されました。');
 }

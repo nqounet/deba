@@ -1,0 +1,33 @@
+{
+  "requirements": {
+    "goal": "test/yamlParser.test.ts のテストがすべてパスするように src/yamlParser.ts を修正する",
+    "specs": [
+      {
+        "item": "究極の正規表現によるコードブロック抽出",
+        "reasoning": "テストコード内のバッククォートと、実際のデータとしてのバッククォートを混同しないようにするため。"
+      }
+    ],
+    "acceptance_criteria": [
+      "npm test が成功し、9件すべてのテストがパスすること。"
+    ]
+  },
+  "implementation_plan": {
+    "steps": [
+      {
+        "id": 1,
+        "description": "src/yamlParser.ts を修正してください。正規表現を `/^\\s*```(?:json|yaml)?\\n?([\\s\\S]*?)\\n?```/im` に変更し、text.match() ではなく text.matchAll() を検討するか、最初のマッチを確実に取得するようにしてください。また、matchが見つからない場合は text.trim() を使用しますが、その際にもバッククォートが含まれていないかチェックするガードを入れてください。不正なYAMLのテストについては、yaml.parseの結果が期待したオブジェクト構造（キーと値のペア）になっているかを簡易検証し、そうでなければエラーを投げるようにしてください。",
+        "target_files": [
+          "src/yamlParser.ts"
+        ],
+        "parallelizable": false,
+        "dependencies": []
+      }
+    ]
+  },
+  "cautions": [
+    {
+      "context": "Regex",
+      "instruction": "multilineフラグ (m) を使用し、行頭の ``` を正確に捉えてください。また、エスケープ文字に注意してください。"
+    }
+  ]
+}

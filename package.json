@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "vitest",
     "build": "./node_modules/.bin/tsc",
     "deba": "npm run build && node build/cli.js"
   },
@@ -25,7 +25,8 @@
   "homepage": "https://github.com/nqounet/deba#readme",
   "devDependencies": {
     "@types/node": "^25.3.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^2.0.5"
   },
   "dependencies": {
     "commander": "^14.0.3",

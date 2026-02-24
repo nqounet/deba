@@ -14,9 +14,9 @@ export async function generateContent(
     ? `${systemInstruction}\n\n---\n\n${prompt}`
     : prompt;
 
-  const args: string[] = ['-m', model, '-p', fullPrompt];
+  const args: string[] = ['-m', model, '-p', fullPrompt, '-o', 'json'];
 
-  const text = await new Promise<string>((resolve, reject) => {
+  const rawOutput = await new Promise<string>((resolve, reject) => {
     execFile('gemini', args, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
       if (error) {
         reject(new Error(`gemini CLI failed: ${error.message}\nstderr: ${stderr}`));
@@ -26,6 +26,26 @@ export async function generateContent(
     });
   });
 
+  // JSON形式の出力をパースして、実際の回答テキストを取り出す
+  let text = '';
+  let cliMeta: any = {};
+  try {
+    // 最初の '{' から最後の '}' までを抽出してパースを試みる
+    const jsonStart = rawOutput.indexOf('{');
+    const jsonEnd = rawOutput.lastIndexOf('}');
+    if (jsonStart !== -1 && jsonEnd !== -1) {
+      const jsonText = rawOutput.substring(jsonStart, jsonEnd + 1);
+      const jsonOutput = JSON.parse(jsonText);
+      text = jsonOutput.response || jsonOutput.text || ''; // response または text フィールドを参照
+      cliMeta = jsonOutput; // トークン数などのメタ情報を保持
+    } else {
+      text = rawOutput.trim();
+    }
+  } catch (e) {
+    // 万が一JSONパースに失敗した場合は、生の出力をそのまま使う（フォールバック）
+    text = rawOutput.trim();
+  }
+
   const endTime = Date.now();
 
   const meta = {
@@ -33,6 +53,7 @@ export async function generateContent(
     model: model,
     duration_ms: endTime - startTime,
     cli_used: true,
+    ...cliMeta,
   };
 
   return { text: text.trim(), meta };

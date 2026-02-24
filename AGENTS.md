@@ -8,9 +8,11 @@ Deba は「成長する新人エンジニア」をコンセプトとした AI �
 
 - **言語**: TypeScript (ESNext, NodeNext modules)
 - **ビルド**: `tsc` → `build/` に出力
-- **LLM**: `gemini` CLI（`child_process.execFile` 経由で呼び出し。SDK やAPIキーは不使用）
-- **依存ライブラリ**: `commander`（CLI）, `yaml`（YAML パース）
-- **実行方法**: `npm run deba -- <command>`
+- **LLM**: `gemini` CLI
+    - 呼び出し時に `-o json` を使用し、CLI メッセージと LLM の回答 (`response` フィールド) を確実に分離。
+    - 計画 (Phase A) には `gemini-2.5-pro` 等の高性能モデル、実装 (Phase B) には `gemini-2.5-flash` を推奨。
+- **テスト**: `vitest` (npm test で実行)
+- **依存ライブラリ**: `commander` (CLI), `yaml` (YAML/JSON パース)
 
 ## ディレクトリ構成
 
@@ -19,62 +21,51 @@ deba/
 ├── src/                  # TypeScript ソースコード
 ├── docs/                 # ドキュメント群
 │   ├── design/           #   設計書（コンセプト〜詳細設計）
-│   ├── plans/            #   計画書（LLM利用計画、開発計画）
-│   └── drafts/           #   プロンプトドラフト等
-├── brain/                # ローカル学習データ（.gitignore対象）
-├── snapshots/            # LLM 入出力スナップショット（.gitignore対象）
-└── build/                # コンパイル済み JS（.gitignore対象）
+│   ├── plans/            #   計画書（上司が作成した実行計画 json 等）
+│   └── drafts/           #   プロンプトテンプレート等
+├── brain/                # 学習データ
+│   ├── skills/           #   意味記憶（承認済みルール）
+│   └── episodes/         #   エピソード記憶（タスク経験）
+├── snapshots/            # LLM 入出力スナップショット
+└── build/                # コンパイル済み JS
 ```
+
+## 実装済みの自律機能（ドッグフーディングの成果）
+
+### 1. Phase A: 計画と自己修復
+- **JSON プロトコルの採用**: 構造化データの安定性を最大化するため、内部プロトコルを JSON に統一。YAML で頻発していたクォート・エスケープ問題を回避。
+- **強化版自己修復 (Self-healing)**: パースエラーに加え、スキーマ違反やオブジェクト形式不備も検知。エラー詳細を添えて LLM に自動リトライをかけ、1回で完結させる回復力。
+- **不完全なブロックの許容**: 出力が途中で切れて閉じ記号（```）がない場合でも、開始記号から末尾までを抽出してパースを試みる。
+
+### 2. Phase B: 実行と自動検証（TDD Loop）
+- **テスト駆動型自己修復 (TDD Loop)**: 各バッチ実行後に `npm test` を自動実行。失敗時はスタックトレースを LLM にフィードバックし、自らコードを修正・再適用する自律ループ。
+- **AMBIGUITY ガード**: AI が実装ではなく質問や困難を報告 (`AMBIGUITY:` で開始) した場合、ソースコードへの上書きを自動停止し、既存ファイルを破壊から守る。
+- **run-plan コマンド**: 外部の JSON 計画ファイルを読み込んで直接実行フェーズに入る機能。人間（上司）が複雑な設計を行い、AI（新人）が実装とテストを担当する協力体制を支援。
+
+### 3. Phase C: 振り返りと成長
+- **スキルの昇格と注入**: 失敗から得た教訓（例：Markdown装飾の禁止）を意味記憶に登録し、次回のプロンプトに自動注入することで同じ過ちを繰り返さない。
+
+## 運用上の知見（Lessons Learned）
+
+- **モデルの使い分け (Tiering)**: 計画段階 (Phase A) が崩れると後続がすべて無効になるため、最強のモデルを投入すべき。実装 (Phase B) はテスト環境があれば軽量モデルでも十分に自己修正可能。
+- **エスケープの宿命**: 技術解説の中にコードブロックや特殊記号を含めると、JSON/YAML ともにパースエラーの温床となる。正規表現の行頭/行末マッチ (`^`, `$`) とマルチラインフラグの活用が不可欠。
+- **新人への指示**: 「テストを確認して」などの曖昧な指示は避け、「このファイルをこう修正しろ。検証はシステムが自動で行う」という直接的な役割分担が自律性を高める。
 
 ## CLI コマンド一覧
 
 | コマンド | 説明 |
 |---------|------|
-| `deba chat <message>` | 単純なLLMチャット |
-| `deba plan <request>` | Phase A: 要件定義と実装計画をYAMLで生成 |
-| `deba validate <file>` | Phase A出力のスキーマ/DAG検証 |
-| `deba execute --step <id> --plan <file>` | Phase B: 単一ステップのコード生成 |
-| `deba run <request>` | Plan → Validate → Execute の一気通貫実行 |
-| `deba review <task_id>` | Phase C: フィードバック→エピソード記録→Reflection |
-| `deba skills` | 獲得スキル一覧の表示 |
+| `deba run <req> --file <paths...>` | **自律実行**: 計画→検証→実装→テスト→自律修正の一括実行 |
+| `deba run-plan <file>` | **共同作業**: 外部の計画ファイルを元に、実装とテスト修復のみを実行 |
+| `deba review <task_id>` | 完了タスクの振り返りと Reflection |
 | `deba skills-promote <rule>` | 学びをスキル（意味記憶）に昇格 |
+| `deba plan <req> --file <paths...>` | 計画（JSON）の生成のみ |
 
-## ビルドと実行
+## 開発と実行
 
 ```bash
-npm run build          # TypeScript → build/ にコンパイル
-npm run deba -- <cmd>  # ビルド＋実行（例: npm run deba -- run "...")
+npm install            # 依存関係のインストール
+npm run build          # ビルド
+npm test               # ユニットテスト（Vitest）実行
+npm run deba -- run "..." --file src/xxx.ts # 自律開発の開始
 ```
-
-## アーキテクチャ上の注意点
-
-- **LLM 呼び出し**: `src/ai.ts` で `gemini` CLI を `execFile` で呼び出す。SDK やAPIキーは使わない。モデル指定は `-m`、プロンプトは `-p` フラグで渡す
-- **Phase A のプロンプト**: `docs/drafts/phase_a_prompt_draft.md` をテンプレートとして読み込み、`{{USER_REQUEST}}`, `{{SEMANTIC_MEMORY}}`, `{{RELATED_EPISODES}}` 等のプレースホルダーを動的に置換する
-- **バッチ実行**: `dag.ts` が依存グラフからバッチを構築し、`runner.ts` がバッチ間は直列、バッチ内は `Promise.all` で並列実行する
-- **スナップショット**: すべてのLLM入出力は `snapshots/task_{id}/` に自動保存される。`deba run` 実行時は `phase_a_*`, `step_N_*` のプレフィックス付きで保存
-- **成長サイクル**: `brain/skills/` の内容が Phase A プロンプトの `{{SEMANTIC_MEMORY}}` に自動注入され、過去の学びが新しいタスクに反映される
-- **ファイル上書きの安全性**: 現時点では生成されたコードは標準出力とスナップショットに保存するのみで、対象ファイルの自動上書きは行わない
-
-## 設計ドキュメント
-
-### docs/design/ — 設計書
-
-| ファイル | 内容 |
-|---------|------|
-| `001_concept.md` | システム全体像 |
-| `002_v2.md` | 成長メカニズムの初期検討 |
-| `003_v3_growth_system.md` | 3層記憶モデル・学習サイクル・信頼レベルの詳細設計 |
-
-### docs/plans/ — 計画書
-
-| ファイル | 内容 |
-|---------|------|
-| `004_llm_usage_plan.md` | LLM使用計画 v1 |
-| `005_llm_usage_plan_v2.md` | LLM使用計画 v2（Phase A/B/C設計、エラーハンドリング） |
-| `006_agile_development_plan.md` | スプリント計画（Sprint 0〜6） |
-
-### docs/drafts/ — ドラフト
-
-| ファイル | 内容 |
-|---------|------|
-| `phase_a_prompt_draft.md` | Phase A統合プロンプトのテンプレート |

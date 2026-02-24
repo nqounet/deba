@@ -61,11 +61,33 @@ program
       console.log('Building Phase A prompt...');
       const prompt = await buildPhaseAPrompt(request, options.file);
 
-      console.log('Sending plan request to LLM...');
-      const { text, meta } = await generateContent(prompt);
+      console.log('Sending plan request to LLM (gemini-2.5-pro)...');
+      const { text, meta } = await generateContent(prompt, 'gemini-2.5-pro');
       
       console.log('Extracting and parsing YAML...');
-      const { yamlRaw, parsedObject, error } = extractAndParseYaml(text);
+      let { yamlRaw, parsedObject, error } = extractAndParseYaml(text);
+
+      // --- YAML 自己修復ロジック (強化版) ---
+      const needsRepair = error || !parsedObject || typeof parsedObject !== 'object' || !validatePhaseA(parsedObject).isValid;
+      
+      if (needsRepair) {
+        const errorDetail = error || (parsedObject && typeof parsedObject === 'object' ? validatePhaseA(parsedObject).errors.join(', ') : '出力が正しいオブジェクト形式ではありません');
+        console.warn(`⚠️ YAML validation/parse error: ${errorDetail}`);
+        console.log('Attempting self-healing (retry 1/1)...');
+        
+        const repairPrompt = `先ほど出力されたYAMLに不備がありました。\nエラー詳細: ${errorDetail}\n\n不足している情報を補完し、validなYAMLブロックのみを再出力してください。特に閉じクォートやインデント、必須フィールドの有無に注意してください。前置きは不要です。`;
+        const { text: repairedText } = await generateContent(repairPrompt, 'gemini-2.5-flash');
+        
+        const repairResult = extractAndParseYaml(repairedText);
+        if (!repairResult.error && repairResult.parsedObject && typeof repairResult.parsedObject === 'object' && validatePhaseA(repairResult.parsedObject).isValid) {
+          console.log('✅ Self-healing successful!');
+          yamlRaw = repairResult.yamlRaw;
+          parsedObject = repairResult.parsedObject;
+          error = undefined;
+        } else {
+          console.error(`❌ Self-healing failed: ${repairResult.error || '依然としてバリデーションを通過できません'}`);
+        }
+      }
 
       const taskId = generateTaskId();
       const snapshotDir = await saveSnapshot(taskId, {
@@ -77,7 +99,7 @@ program
 
       console.log('\n===== Phase A Output (Parsed) =====');
       if (parsedObject) {
-        console.log(yaml.stringify(parsedObject));
+        console.log(yaml.stringify(parsedObject)); // yaml.stringify は JSON オブジェクトもきれいに表示できる
       } else {
         console.error('Parse Error:', error);
       }
@@ -207,11 +229,33 @@ program
       console.log('\n--- Phase A (Plan) ---');
       const prompt = await buildPhaseAPrompt(request, options.file);
       
-      console.log('Sending plan request to LLM (gemini-2.5-flash)...');
-      const { text, meta } = await generateContent(prompt);
+      console.log('Sending plan request to LLM (gemini-2.5-pro)...');
+      const { text, meta } = await generateContent(prompt, 'gemini-2.5-pro');
       
       console.log('Extracting and parsing YAML...');
-      const { yamlRaw, parsedObject, error } = extractAndParseYaml(text);
+      let { yamlRaw, parsedObject, error } = extractAndParseYaml(text);
+
+      // --- YAML 自己修復ロジック (強化版) ---
+      const needsRepair = error || !parsedObject || typeof parsedObject !== 'object' || !validatePhaseA(parsedObject).isValid;
+      
+      if (needsRepair) {
+        const errorDetail = error || (parsedObject && typeof parsedObject === 'object' ? validatePhaseA(parsedObject).errors.join(', ') : '出力が正しいオブジェクト形式ではありません');
+        console.warn(`⚠️ YAML/JSON validation/parse error: ${errorDetail}`);
+        console.log('Attempting self-healing (retry 1/1)...');
+        
+        const repairPrompt = `先ほど出力された内容に不備がありました。\nエラー詳細: ${errorDetail}\n\n不足している情報を補完し、validなJSONブロックのみを再出力してください。特に閉じクォートやカンマ、インデント、必須フィールドの有無に注意してください。前置きは不要です。`;
+        const { text: repairedText } = await generateContent(repairPrompt, 'gemini-2.5-pro');
+        
+        const repairResult = extractAndParseYaml(repairedText);
+        if (!repairResult.error && repairResult.parsedObject && typeof repairResult.parsedObject === 'object' && validatePhaseA(repairResult.parsedObject).isValid) {
+          console.log('✅ Self-healing successful!');
+          yamlRaw = repairResult.yamlRaw;
+          parsedObject = repairResult.parsedObject;
+          error = undefined;
+        } else {
+          console.error(`❌ Self-healing failed: ${repairResult.error || '依然としてバリデーションを通過できません'}`);
+        }
+      }
 
       const snapshotDir = await saveSnapshot(taskId, {
          input: prompt,
@@ -249,6 +293,45 @@ program
     }
   });
 
+
+
+program
+  .command('run-plan')
+  .description('外部の計画ファイル(JSON/YAML)を読み込み、直接実行フェーズを開始する (TDDループ付き)')
+  .argument('<filepath>', '実行する計画ファイルのパス')
+  .action(async (filepath: string) => {
+    try {
+      const taskId = generateTaskId();
+      console.log(`\nStarting Run-Plan Task: ${taskId}`);
+      console.log(`Loading plan from: ${filepath}`);
+      
+      const fileContent = await fs.readFile(filepath, 'utf-8');
+      const parsedData = yaml.parse(fileContent);
+
+      console.log('\n--- Validate ---');
+      const schemaResult = validatePhaseA(parsedData);
+      if (!schemaResult.isValid) {
+         throw new Error(`Schema validation failed:\n  ${schemaResult.errors.join('\n  ')}`);
+      }
+
+      const steps = parsedData.implementation_plan?.steps || [];
+      const dagResult = validateAndBuildBatches(steps);
+      if (!dagResult.isValid) {
+         throw new Error(`DAG validation failed:\n  ${dagResult.errors.join('\n  ')}`);
+      }
+
+      console.log(`✅ Validation passed. ${dagResult.batches.length} Execution Batches constructed.`);
+
+      const cautions = parsedData.cautions || [];
+      // 実行フェーズ（TDDループ内蔵）を開始
+      await executeBatches(dagResult.batches, cautions, taskId);
+
+      console.log(`\n🎉 Task ${taskId} completed successfully!`);
+    } catch (error) {
+      console.error('Run-Plan command failed.', error);
+      process.exit(1);
+    }
+  });
 
 
 function askQuestion(query: string): Promise<string> {
