@@ -4,7 +4,7 @@ import { chatCommand, planCommand } from './commands/plan.js';
 import { validateCommand, executeCommand } from './commands/utils.js';
 import { runCommand, runPlanCommand } from './commands/run.js';
 import { reviewCommand } from './commands/review.js';
-import { cleanCommand, skillsCommand, skillsPromoteCommand } from './commands/maintenance.js';
+import { cleanCommand, skillsCommand, skillsPromoteCommand, interactivePromoteCommand } from './commands/maintenance.js';
 
 const program = new Command();
 
@@ -75,5 +75,10 @@ program
   .argument('<rule>', '昇格するルール文')
   .option('--project <name>', 'プロジェクト名', 'default')
   .action(skillsPromoteCommand);
+
+program
+  .command('promote')
+  .description('成長ログから学び候補を対話形式でスキルに昇格する')
+  .action(interactivePromoteCommand);
 
 program.parse(process.argv);

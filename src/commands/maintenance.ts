@@ -1,6 +1,19 @@
+import * as readline from 'readline';
 import { listSkills as listSkillsInfo, promoteToSkill } from '../skills.js';
 import { cleanWorktrees } from '../utils/git.js';
 import { cleanSnapshots } from '../utils/clean.js';
+import { getPendingLearnings, markAsApproved } from '../growthLog.js';
+
+function askQuestion(query: string): Promise<string> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+  return new Promise(resolve => rl.question(query, (ans) => {
+    rl.close();
+    resolve(ans);
+  }));
+}
 
 export async function cleanCommand(options: { days: string }) {
   console.log('🧹 Cleaning up workspace...');
@@ -18,4 +31,42 @@ export async function skillsCommand() {
 export async function skillsPromoteCommand(rule: string, options: { project: string }) {
   await promoteToSkill(rule, options.project);
   console.log(`✅ スキルに昇格しました: ${rule}`);
+}
+
+export async function interactivePromoteCommand() {
+  const pending = await getPendingLearnings();
+
+  if (pending.length === 0) {
+    console.log('✨ 承認待ちの学びはありません。');
+    return;
+  }
+
+  console.log(`\n📝 ${pending.length} 件の承認待ちの学びがあります。\n`);
+
+  for (const item of pending) {
+    console.log('---');
+    console.log(`学び: ${item.summary}`);
+    if (item.proposedRule) {
+      console.log(`提案ルール: ${item.proposedRule}`);
+    }
+    console.log(`汎用性: ${item.generalizability}`);
+
+    const answer = await askQuestion('\nこの学びをスキルに昇格しますか？ [y/n/skip]: ');
+    
+    if (answer.toLowerCase() === 'y') {
+      const rule = item.proposedRule || item.summary;
+      // TODO: プロジェクト名を判定するロジックがあれば入れる
+      await promoteToSkill(rule, 'default');
+      await markAsApproved(item.summary, item.filepath);
+      console.log('✅ 承認し、スキルに昇格しました。');
+    } else if (answer.toLowerCase() === 'n') {
+      console.log('⏩ スキップしました。');
+    } else if (answer.toLowerCase() === 'skip') {
+      console.log('⏩ スキップしました。');
+    } else {
+      console.log('⏩ スキップしました。');
+    }
+  }
+
+  console.log('\n✨ すべての項目の確認が完了しました。');
 }
