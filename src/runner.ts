@@ -7,20 +7,22 @@ import { StepBatch } from './dag.js';
 import { exec } from 'child_process'; // child_processモジュールをインポート
 
 /**
- * npm test を実行し、その結果を返す。
+ * 指定したテストコマンド（またはデフォルトの npm test）を実行し、その結果を返す。
  * @param workingDir 実行ディレクトリ
- * @returns Promise<{ stdout: string, stderr: string, code: number | null }> npm test の標準出力と標準エラー出力
+ * @param command 実行するテストコマンド (例: 'npm test test/specific.test.ts')
+ * @returns Promise<{ stdout: string, stderr: string, code: number | null }> テストの標準出力と標準エラー出力
  */
-export function executeTests(workingDir?: string): Promise<{ stdout: string, stderr: string, code: number | null }> {
+export function executeTests(workingDir?: string, command?: string): Promise<{ stdout: string, stderr: string, code: number | null }> {
+  const testCmd = command || 'npm test';
   return new Promise((resolve, reject) => {
-    console.log(`\n--- Running npm test in ${workingDir || 'cwd'} ---`);
-    exec('npm test', { cwd: workingDir || process.cwd() }, (error, stdout, stderr) => {
+    console.log(`\n--- Running test: ${testCmd} in ${workingDir || 'cwd'} ---`);
+    exec(testCmd, { cwd: workingDir || process.cwd() }, (error, stdout, stderr) => {
       if (error) {
-        console.error(`❌ npm test failed with exit code ${error.code}`);
+        console.error(`❌ Test failed with exit code ${error.code}: ${testCmd}`);
         // エラーが発生した場合も、stdoutとstderrは返す
         resolve({ stdout, stderr, code: error.code ?? null });
       } else {
-        console.log('✅ npm test completed successfully.');
+        console.log(`✅ Test passed: ${testCmd}`);
         resolve({ stdout, stderr, code: 0 });
       }
     });
@@ -29,8 +31,9 @@ export function executeTests(workingDir?: string): Promise<{ stdout: string, std
 
 /**
  * 単一の実行ステップを処理し、プロンプト生成・AI呼び出し・スナップショット保存を行う。
+ * 実行後に、そのステップ固有のテストがあれば実行する。
  */
-export async function executeStep(step: any, cautions: any[], taskId: string, workingDir?: string): Promise<string> {
+export async function executeStep(step: any, cautions: any[], taskId: string, workingDir?: string): Promise<{ text: string, testResult?: any }> {
   console.log(`\n--- Executing Step ${step.id} ---`);
   console.log(`Description: ${step.description}`);
   console.log(`Target Files: ${step.target_files?.join(', ') || 'None'}`);
@@ -58,7 +61,7 @@ export async function executeStep(step: any, cautions: any[], taskId: string, wo
   console.log(`Sending execution request to lightweight model (gemini-2.5-flash) for step ${step.id}...`);
   
   const systemInstruction = "あなたは優秀なプログラマーです。プロンプトの指示に厳密に従い、変更後の完全なコードのみを出力してください。Markdownのコードブロック記号は不要です。";
-  const { text, meta } = await generateContent(prompt, 'gemini-2.5-flash', systemInstruction);
+  let { text, meta } = await generateContent(prompt, 'gemini-2.5-flash', systemInstruction);
 
   await saveSnapshot(taskId, {
     input: prompt,
@@ -75,7 +78,7 @@ export async function executeStep(step: any, cautions: any[], taskId: string, wo
     // AIの回答が AMBIGUITY: で始まる場合は、ファイルへの書き込みをスキップする
     if (text.trim().startsWith('AMBIGUITY:')) {
       console.warn(`⚠️ Skipped applying changes because AI reported ambiguity.`);
-      return text;
+      return { text };
     }
 
     const targetFile = step.target_files[0];
@@ -90,7 +93,29 @@ export async function executeStep(step: any, cautions: any[], taskId: string, wo
     }
   }
 
-  return text;
+  // ステップ固有のテストがある場合は実行する
+  let testResult;
+  if (step.test_command) {
+    console.log(`\n[Step ${step.id}] Running targeted test: ${step.test_command}`);
+    testResult = await executeTests(workingDir, step.test_command);
+
+    // テスト失敗時のリトライ (TDD Loop)
+    if (testResult.code !== 0) {
+      console.log(`\n❌ Step ${step.id} test failed. Attempting self-repair...`);
+      const testErrorMessage = `前回のステップで適用したコードにおいて、テスト '${step.test_command}' が失敗しました。以下のエラーメッセージをもとにコードを修正してください:\n${testResult.stderr || testResult.stdout}`;
+      const retryCautions = [...cautions, { context: 'Test Failure', instruction: testErrorMessage }];
+      
+      // 再生成（cautionsにエラーを含める）
+      const retryResult = await executeStep({ ...step, test_command: undefined }, retryCautions, taskId, workingDir);
+      text = retryResult.text;
+
+      // リトライ後の再テスト
+      console.log(`\n[Step ${step.id}] Re-running targeted test after repair: ${step.test_command}`);
+      testResult = await executeTests(workingDir, step.test_command);
+    }
+  }
+
+  return { text, testResult };
 }
 
 /**
@@ -104,41 +129,41 @@ export async function executeBatches(batches: StepBatch[], cautions: any[], task
     const stepIds = batch.steps.map(s => s.id).join(', ');
     console.log(`\n📦 Executing Batch ${i + 1}/${batches.length} (Steps: [${stepIds}])`);
 
-    // バッチ内のステップは並列実行（parallelizable が有効に働く）
-    // Promise.all で全て同時に走らせ、全完了を待つ
+    // バッチ内のステップは並列実行
     const executionPromises = batch.steps.map(step => executeStep(step, cautions, taskId, workingDir));
     
     // バッチ内のすべてのステップの実行完了を待機
     await Promise.all(executionPromises);
     
-    console.log(`✅ Batch ${i + 1} completed.`);
+    console.log(`✅ Batch ${i + 1} steps completed.`);
 
-    // 各バッチ処理の完了後にnpm testを実行する
-    let testResult = await executeTests(workingDir);
+    // バッチ全体の完了後に、全体テスト（リグレッションチェック）を実行する
+    console.log(`\n[Batch ${i + 1}] Running full regression test...`);
+    let testResult = await executeTests(workingDir, 'npm test');
 
-    // npm test が失敗した場合、1回だけリトライする
     if (testResult.code !== 0) {
-      console.log(`\n❌ バッチ ${i + 1} の後で npm test が失敗しました。一度リトライします...`);
-      // エラーメッセージをcautionとしてプロンプトに含める
-      const testErrorMessage = `前回の 'npm test' で以下のエラーが発生しました。この問題を修正してください:\n${testResult.stderr}`;
-      const retryCautions = [...cautions, testErrorMessage];
+      console.log(`\n❌ Batch ${i + 1} regression test failed. Attempting batch-level repair...`);
+      // バッチ全体での修正が必要な場合、本来は依存関係などを考慮して再計画すべきだが、
+      // ここでは簡易的に直前のバッチの全ステップにエラー情報をフィードバックしてリトライする
+      const testErrorMessage = `バッチ実行後の全体テスト 'npm test' が失敗しました。このバッチで変更した内容に問題がある可能性があります。以下のエラーを修正してください:\n${testResult.stderr || testResult.stdout}`;
+      const retryCautions = [...cautions, { context: 'Regression Failure', instruction: testErrorMessage }];
 
-      // リトライ用のステップを並列実行
-      const retryExecutionPromises = batch.steps.map(step => executeStep(step, retryCautions, taskId, workingDir));
+      const retryExecutionPromises = batch.steps.map(step => executeStep({ ...step, test_command: undefined }, retryCautions, taskId, workingDir));
       await Promise.all(retryExecutionPromises);
 
-      // リトライ後のテスト
-      console.log('\n--- リトライ後に npm test を実行 ---');
-      testResult = await executeTests(workingDir);
+      console.log('\n--- Re-running regression test after batch repair ---');
+      testResult = await executeTests(workingDir, 'npm test');
 
       if (testResult.code !== 0) {
-        console.error(`❌ バッチ ${i + 1} のリトライ後も npm test が失敗しました。実行を中断します。`);
-        throw new Error(`npm test がリトライ後も失敗しました。詳細:\n${testResult.stderr}`);
+        console.error(`❌ Batch ${i + 1} regression test failed even after repair. Halting execution.`);
+        throw new Error(`Regression test failed after repair. Details:\n${testResult.stderr || testResult.stdout}`);
       } else {
-        console.log(`✅ バッチ ${i + 1} のリトライ後、npm test が成功しました。`);
+        console.log(`✅ Batch ${i + 1} regression test passed after repair.`);
       }
+    } else {
+      console.log(`✅ Batch ${i + 1} regression test passed.`);
     }
   }
 
-  console.log('\nすべてのバッチが正常に実行されました。');
+  console.log('\nすべてのバッチが正常に実行され、テストを通過しました。');
 }

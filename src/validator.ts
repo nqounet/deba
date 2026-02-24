@@ -63,6 +63,10 @@ export function validatePhaseA(data: any): ValidationResult {
           errors.push(`Step ${step.id ?? `at index ${index}`} is missing or invalid "target_files" (must be an array).`);
         }
 
+        if (step.test_command !== undefined && typeof step.test_command !== 'string') {
+          errors.push(`Step ${step.id ?? `at index ${index}`} has invalid "test_command" (must be a string if provided).`);
+        }
+
         if (typeof step.parallelizable !== 'boolean') {
           errors.push(`Step ${step.id ?? `at index ${index}`} is missing or invalid "parallelizable" (must be a boolean).`);
         }
