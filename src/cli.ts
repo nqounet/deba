@@ -14,7 +14,7 @@ import { executeStep, executeBatches } from './runner.js';
 import { saveEpisode } from './episode.js';
 import { appendGrowthLog } from './growthLog.js';
 import { listSkills as listSkillsInfo, promoteToSkill } from './skills.js';
-import { getMainRepoRoot } from './utils/git.js';
+import { getMainRepoRoot, createWorktree, getWorktreePath, mergeWorktree, removeWorktree } from './utils/git.js';
 
 const program = new Command();
 
@@ -284,9 +284,15 @@ program
       console.log(`✅ Validation passed. ${dagResult.batches.length} Execution Batches constructed.`);
 
       const cautions = parsedObject.cautions || [];
-      await executeBatches(dagResult.batches, cautions, taskId);
 
-      console.log(`\n🎉 Task ${taskId} completed successfully!`);
+      // Git Worktree による隔離環境での実行を開始 (Step 2)
+      const worktreeDir = createWorktree(taskId);
+      console.log(`🚀 Isolated execution in worktree: ${worktreeDir}`);
+
+      await executeBatches(dagResult.batches, cautions, taskId, worktreeDir);
+
+      console.log(`\n🎉 Task ${taskId} completed successfully in worktree!`);
+      console.log(`You can check the changes in: ${worktreeDir}`);
       console.log(`Check ${snapshotDir} for inputs/outputs.`);
     } catch (error) {
       console.error('Run command failed.', error);
@@ -324,10 +330,16 @@ program
       console.log(`✅ Validation passed. ${dagResult.batches.length} Execution Batches constructed.`);
 
       const cautions = parsedData.cautions || [];
-      // 実行フェーズ（TDDループ内蔵）を開始
-      await executeBatches(dagResult.batches, cautions, taskId);
+      
+      // Git Worktree による隔離環境での実行を開始 (Step 2)
+      const worktreeDir = createWorktree(taskId);
+      console.log(`🚀 Isolated execution in worktree: ${worktreeDir}`);
 
-      console.log(`\n🎉 Task ${taskId} completed successfully!`);
+      // 実行フェーズ（TDDループ内蔵）を開始
+      await executeBatches(dagResult.batches, cautions, taskId, worktreeDir);
+
+      console.log(`\n🎉 Task ${taskId} completed successfully in worktree!`);
+      console.log(`You can check the changes in: ${worktreeDir}`);
     } catch (error) {
       console.error('Run-Plan command failed.', error);
       process.exit(1);
@@ -404,6 +416,21 @@ program
 
       if (isApproved) {
         console.log('\n✅ タスクを承認しました。エピソードを記録し、完了です。');
+
+        // Worktree のマージと削除の確認 (Step 3)
+        const worktreeDir = getWorktreePath(taskId);
+        try {
+          await fs.access(worktreeDir);
+          const mergeAnswer = await askQuestion(`\n隔離環境 (${worktreeDir}) の変更をメインにマージしてWorktreeを削除しますか？ [y/n]: `);
+          if (mergeAnswer.trim().toLowerCase() === 'y') {
+            mergeWorktree(taskId);
+            removeWorktree(worktreeDir, taskId);
+          } else {
+            console.log(`\n💡 Worktree は残してあります。後で確認できます: ${worktreeDir}`);
+          }
+        } catch {
+          // Worktree が存在しない場合は何もしない
+        }
       } else {
         console.log('\n🔄 修正内容を受け付けました。Reflection を実行します...');
 
