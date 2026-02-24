@@ -33,7 +33,7 @@ export async function skillsPromoteCommand(rule: string, options: { project: str
   console.log(`✅ スキルに昇格しました: ${rule}`);
 }
 
-export async function interactivePromoteCommand() {
+export async function promoteLearningsCommand(options: { yes?: boolean }) {
   const pending = await getPendingLearnings();
 
   if (pending.length === 0) {
@@ -51,18 +51,22 @@ export async function interactivePromoteCommand() {
     }
     console.log(`汎用性: ${item.generalizability}`);
 
-    const answer = await askQuestion('\nこの学びをスキルに昇格しますか？ [y/n/skip]: ');
+    let shouldPromote = false;
+    if (options.yes) {
+      console.log('\n自動承認しました (--yes)');
+      shouldPromote = true;
+    } else {
+      const answer = await askQuestion('\nこの学びをスキルに昇格しますか？ [y/n/skip]: ');
+      if (answer.toLowerCase() === 'y') {
+        shouldPromote = true;
+      }
+    }
     
-    if (answer.toLowerCase() === 'y') {
+    if (shouldPromote) {
       const rule = item.proposedRule || item.summary;
-      // TODO: プロジェクト名を判定するロジックがあれば入れる
       await promoteToSkill(rule, 'default');
       await markAsApproved(item.summary, item.filepath);
       console.log('✅ 承認し、スキルに昇格しました。');
-    } else if (answer.toLowerCase() === 'n') {
-      console.log('⏩ スキップしました。');
-    } else if (answer.toLowerCase() === 'skip') {
-      console.log('⏩ スキップしました。');
     } else {
       console.log('⏩ スキップしました。');
     }

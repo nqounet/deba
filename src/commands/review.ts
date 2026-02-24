@@ -22,7 +22,7 @@ function askQuestion(query: string): Promise<string> {
   }));
 }
 
-export async function reviewCommand(taskId: string) {
+export async function reviewCommand(taskId: string, options: { yes?: boolean } = {}) {
   const snapshotDir = path.join(getMainRepoRoot(), 'snapshots', taskId);
 
   try {
@@ -55,9 +55,17 @@ export async function reviewCommand(taskId: string) {
   console.log(`Steps executed: ${stepsExecuted.join(', ') || 'N/A'}`);
   console.log(`\nCheck snapshots/${taskId}/ for detailed inputs/outputs.\n`);
 
-  const answer = await askQuestion('承認しますか？ [y/修正内容を入力]: ');
+  let answer = '';
+  let isApproved = false;
 
-  const isApproved = answer.trim().toLowerCase() === 'y';
+  if (options.yes) {
+    console.log('自動承認しました (--yes)');
+    answer = 'y';
+    isApproved = true;
+  } else {
+    answer = await askQuestion('承認しますか？ [y/修正内容を入力]: ');
+    isApproved = answer.trim().toLowerCase() === 'y';
+  }
 
   const episodePath = await saveEpisode({
     taskId,
@@ -73,10 +81,18 @@ export async function reviewCommand(taskId: string) {
     const worktreeDir = getWorktreePath(taskId);
     try {
       await fs.access(worktreeDir);
-      const mergeAnswer = await askQuestion(`\n隔離環境 (${worktreeDir}) の変更をメインにマージしてWorktreeを削除しますか？ [y/n]: `);
-      if (mergeAnswer.trim().toLowerCase() === 'y') {
+      let shouldMerge = false;
+      if (options.yes) {
+        shouldMerge = true;
+      } else {
+        const mergeAnswer = await askQuestion(`\n隔離環境 (${worktreeDir}) の変更をメインにマージしてWorktreeを削除しますか？ [y/n]: `);
+        shouldMerge = mergeAnswer.trim().toLowerCase() === 'y';
+      }
+
+      if (shouldMerge) {
         mergeWorktree(taskId);
         removeWorktree(worktreeDir, taskId);
+        console.log(`\n✅ マージ完了。Worktree を削除しました。`);
       } else {
         console.log(`\n💡 Worktree は残してあります。後で確認できます: ${worktreeDir}`);
       }

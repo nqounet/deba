@@ -81,6 +81,8 @@ export async function runCommand(request: string, options: { file?: string[] }) 
   await executeBatches(dagResult.batches, cautions, taskId, worktreeDir);
 
   console.log(`\n🎉 Task ${taskId} completed successfully in worktree!`);
+  console.log(`\n👉 次に、以下のコマンドを実行してレビューを行い、学びを記録してください：`);
+  console.log(`   npm run deba -- review ${taskId}`);
 }
 
 export async function runPlanCommand(filepath: string) {
@@ -112,4 +114,6 @@ export async function runPlanCommand(filepath: string) {
   await executeBatches(dagResult.batches, cautions, taskId, worktreeDir);
 
   console.log(`\n🎉 Task ${taskId} completed successfully in worktree!`);
+  console.log(`\n👉 次に、以下のコマンドを実行してレビューを行い、学びを記録してください：`);
+  console.log(`   npm run deba -- review ${taskId}`);
 }

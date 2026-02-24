@@ -4,7 +4,7 @@ import { chatCommand, planCommand } from './commands/plan.js';
 import { validateCommand, executeCommand } from './commands/utils.js';
 import { runCommand, runPlanCommand } from './commands/run.js';
 import { reviewCommand } from './commands/review.js';
-import { cleanCommand, skillsCommand, skillsPromoteCommand, interactivePromoteCommand } from './commands/maintenance.js';
+import { cleanCommand, skillsCommand, skillsPromoteCommand, promoteLearningsCommand } from './commands/maintenance.js';
 
 const program = new Command();
 
@@ -56,6 +56,7 @@ program
   .command('review')
   .description('Phase C: タスク完了後のフィードバックを受け付け、エピソード記録と学び抽出を行う')
   .argument('<task_id>', 'レビュー対象のタスクID')
+  .option('-y, --yes', 'タスクを自動承認し、マージとWorktreeの削除を行う')
   .action(reviewCommand);
 
 program
@@ -79,6 +80,7 @@ program
 program
   .command('promote')
   .description('成長ログから学び候補を対話形式でスキルに昇格する')
-  .action(interactivePromoteCommand);
+  .option('-y, --yes', '全ての項目を自動で承認してスキルに昇格する')
+  .action(promoteLearningsCommand);
 
 program.parse(process.argv);
