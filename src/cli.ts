@@ -14,6 +14,7 @@ import { executeStep, executeBatches } from './runner.js';
 import { saveEpisode } from './episode.js';
 import { appendGrowthLog } from './growthLog.js';
 import { listSkills as listSkillsInfo, promoteToSkill } from './skills.js';
+import { saveKnowledge, Knowledge } from './knowledge.js';
 import { getMainRepoRoot, createWorktree, getWorktreePath, mergeWorktree, removeWorktree, cleanWorktrees } from './utils/git.js';
 import { cleanSnapshots } from './utils/clean.js';
 
@@ -474,7 +475,7 @@ program
           console.log(yaml.stringify(parsedObject));
           console.log('=============================\n');
 
-          // 学び候補を成長ログに追記
+          // 学び候補を成長ログに追記し、SKRにも保存
           const learnings = parsedObject.learnings || [];
           for (const learning of learnings) {
             await appendGrowthLog({
@@ -484,6 +485,17 @@ program
               proposedRule: learning.proposed_rule,
               sourceEpisode: episodePath,
             });
+
+            // SKRに自動保存
+            const knowledge: Knowledge = {
+              summary: learning.summary || '(要約なし)',
+              facts: [learning.proposed_rule || ''],
+              inferences: [`Derived from episode: ${taskId}`, `Success state: false (needed correction)`],
+              keywords: (learning.summary || '').split(/\s+/).concat(learning.related_skills || '').filter((k: string) => k.length > 2),
+              confidence_score: learning.generalizability === 'high' ? 80 : 60,
+            };
+            const skrPath = await saveKnowledge(taskId, knowledge);
+            console.log(`💾 Knowledge saved to SKR: ${skrPath}`);
           }
 
           // 自己評価をエピソードに追記

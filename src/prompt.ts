@@ -1,6 +1,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { loadSkills } from './skills.js';
+import { searchKnowledge, formatKnowledgeForPrompt } from './knowledge.js';
 
 // docs/drafts/phase_a_prompt_template.md のパス
 const PROMPT_TEMPLATE_PATH = path.join(process.cwd(), 'docs', 'drafts', 'phase_a_prompt_template.md');
@@ -70,7 +71,26 @@ export async function buildPhaseAPrompt(request: string, targetFilePaths: string
 
   // 意味記憶（スキル）の注入
   const skills = await loadSkills();
-  template = template.replace(/\{\{SEMANTIC_MEMORY\}\}/g, skills || '※まだ蓄積されたスキルなし');
+  
+  // 知識ベース（SKR）の検索と注入
+  // 要望に含まれる単語から簡易的に検索（実際にはよりスマートなキーワード抽出が望ましいが、まずは全体一致/部分一致を狙う）
+  // 複数のキーワードで検索するために、スペースで区切られた単語も考慮する
+  const searchKeywords = request.split(/\s+/).filter(w => w.length > 1);
+  const allKnowledgeResults = [];
+  for (const kw of [...searchKeywords, request]) {
+     const results = await searchKnowledge(kw);
+     allKnowledgeResults.push(...results);
+  }
+  // 重複を削除
+  const uniqueKnowledgeResults = Array.from(new Map(allKnowledgeResults.map(r => [r.filename, r])).values());
+  if (uniqueKnowledgeResults.length > 0) {
+    console.log(`💡 知識ベース(SKR)から ${uniqueKnowledgeResults.length} 件の知見を注入しました`);
+  }
+  const knowledgePrompt = formatKnowledgeForPrompt(uniqueKnowledgeResults);
+
+  // スキルと知識ベースの内容を結合して注入
+  const combinedMemory = `## 承認済みスキル\n${skills || '※まだ蓄積されたスキルなし'}\n\n## 過去の知見 (Knowledge Base)\n${knowledgePrompt}`;
+  template = template.replace(/\{\{SEMANTIC_MEMORY\}\}/g, combinedMemory);
 
   // エピソード記憶の注入
   const episodes = await loadRecentEpisodes();
