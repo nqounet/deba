@@ -106,16 +106,32 @@ export function cleanWorktrees(): void {
 }
 
 /**
- * 指定した taskId のブランチを現在のブランチにマージ（squash）する
+ * 指定した taskId のブランチを現在のブランチにマージ（squash）する。
+ * 正道に基づき、Worktree 側でコミットしてからメインにマージする。
  */
 export function mergeWorktree(taskId: string): void {
   const branchName = `feature/${taskId}`;
-  console.log(`\n--- Merging changes from ${branchName} (Squash) ---`);
+  const worktreeDir = getWorktreePath(taskId);
+
+  console.log(`\n--- Merging changes from Worktree (${taskId}) via Git ---`);
+  
   try {
+    // 1. Worktree 側で未コミットの変更があればコミットする
+    try {
+      console.log(`Committing changes in worktree: ${worktreeDir}`);
+      execSync(`git add .`, { cwd: worktreeDir });
+      execSync(`git commit -m "Deba task execution: ${taskId}"`, { cwd: worktreeDir, stdio: 'ignore' });
+    } catch {
+      // 変更がない場合はコミットが失敗するが、そのまま進む
+    }
+
+    // 2. メインリポジトリ側で squash merge を実行
+    // (getMainRepoRoot() で実行されることを想定)
     execSync(`git merge --squash ${branchName}`, { stdio: 'inherit' });
-    console.log(`✅ Changes merged. Please commit if you're satisfied.`);
+    
+    console.log(`✅ Git merge --squash completed.`);
   } catch (error: any) {
-    throw new Error(`Failed to merge changes: ${error.message}`);
+    throw new Error(`Failed to merge changes via Git: ${error.message}`);
   }
 }
 

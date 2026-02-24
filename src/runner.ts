@@ -4,7 +4,7 @@ import { generateContent } from './ai.js';
 import { buildPhaseBPrompt } from './prompt.js';
 import { saveSnapshot } from './snapshot.js';
 import { StepBatch } from './dag.js';
-import { exec } from 'child_process'; // child_processモジュールをインポート
+import { exec, execSync } from 'child_process'; // execSync を追加
 
 /**
  * 指定したテストコマンド（またはデフォルトの npm test）を実行し、その結果を返す。
@@ -88,6 +88,13 @@ export async function executeStep(step: any, cautions: any[], taskId: string, wo
       await fs.mkdir(path.dirname(absPath), { recursive: true });
       await fs.writeFile(absPath, text, 'utf-8');
       console.log(`✅ Applied changes to: ${targetFile} (in ${baseDir})`);
+
+      // Git リポジトリ内であれば git add を実行する
+      try {
+        execSync(`git add ${targetFile}`, { cwd: baseDir });
+      } catch {
+        // Git 管理下でない場合は無視
+      }
     } catch (e: any) {
       console.error(`❌ Failed to write file ${targetFile}: ${e.message}`);
     }
@@ -138,8 +145,23 @@ export async function executeBatches(batches: StepBatch[], cautions: any[], task
     console.log(`✅ Batch ${i + 1} steps completed.`);
 
     // バッチ全体の完了後に、全体テスト（リグレッションチェック）を実行する
-    console.log(`\n[Batch ${i + 1}] Running full regression test...`);
-    let testResult = await executeTests(workingDir, 'npm test');
+    console.log(`\n[Batch ${i + 1}] Running regression test...`);
+    
+    // package.json がある場合のみ npm test を実行する
+    let testCmd = 'npm test';
+    let shouldRunDefaultTest = true;
+    try {
+      await fs.access(path.join(workingDir || process.cwd(), 'package.json'));
+    } catch {
+      shouldRunDefaultTest = false;
+    }
+
+    if (!shouldRunDefaultTest) {
+      console.log('💡 No package.json found. Skipping default npm test.');
+      continue; // 次のバッチへ
+    }
+
+    let testResult = await executeTests(workingDir, testCmd);
 
     if (testResult.code !== 0) {
       console.log(`\n❌ Batch ${i + 1} regression test failed. Attempting batch-level repair...`);
