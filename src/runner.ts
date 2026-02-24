@@ -46,6 +46,22 @@ export async function executeStep(step: any, cautions: any[], taskId: string): P
   console.log(text);
   console.log(`=========================================\n`);
 
+  // --- 実ファイルへの適用 ---
+  if (Array.isArray(step.target_files) && step.target_files.length > 0) {
+    // 現在の軽量モデルプロンプト仕様（1ファイルまるごと出力）に基づき、
+    // 最初の対象ファイルに対して書き込みを行う
+    const targetFile = step.target_files[0];
+    try {
+      const absPath = path.resolve(process.cwd(), targetFile);
+      // ディレクトリが存在しない場合は作成
+      await fs.mkdir(path.dirname(absPath), { recursive: true });
+      await fs.writeFile(absPath, text, 'utf-8');
+      console.log(`✅ Applied changes to: ${targetFile}`);
+    } catch (e: any) {
+      console.error(`❌ Failed to write file ${targetFile}: ${e.message}`);
+    }
+  }
+
   return text;
 }
 

@@ -2,8 +2,8 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { loadSkills } from './skills.js';
 
-// docs/drafts/phase_a_prompt_draft.md のパス
-const PROMPT_TEMPLATE_PATH = path.join(process.cwd(), 'docs', 'drafts', 'phase_a_prompt_draft.md');
+// docs/drafts/phase_a_prompt_template.md のパス
+const PROMPT_TEMPLATE_PATH = path.join(process.cwd(), 'docs', 'drafts', 'phase_a_prompt_template.md');
 const EPISODES_DIR = path.join(process.cwd(), 'brain', 'episodes');
 
 /**
@@ -17,11 +17,20 @@ async function loadRecentEpisodes(maxCount: number = 5): Promise<string> {
 
     let combined = '';
     for (const file of mdFiles) {
-      const content = await fs.readFile(path.join(EPISODES_DIR, file), 'utf-8');
-      combined += `\n---\n${content}\n`;
+      const filePath = path.join(EPISODES_DIR, file);
+      try {
+        const content = await fs.readFile(filePath, 'utf-8');
+        combined += `\n---\n${content}\n`;
+      } catch (fileError: any) {
+        // 個別のエピソードファイル読み込みエラーは、全体の処理を中断せず、エラーメッセージとして含める
+        console.error(`エピソードファイルの読み込みに失敗しました: ${filePath} - ${fileError.message}`);
+        combined += `\n---\n※エピソードファイルの読み込み失敗: ${fileError.message}\n`;
+      }
     }
     return combined;
-  } catch {
+  } catch (dirError: any) {
+    // ディレクトリが存在しないなどのエラー
+    console.error(`エピソードディレクトリの読み込みに失敗しました: ${EPISODES_DIR} - ${dirError.message}`);
     return '※記録なし';
   }
 }
@@ -30,28 +39,44 @@ async function loadRecentEpisodes(maxCount: number = 5): Promise<string> {
  * プロンプトテンプレートを読み込み、変数を注入してPhase A用プロンプトを構築する
  * @returns { prompt, skillCount } プロンプト文字列と注入されたスキル数
  */
-export async function buildPhaseAPrompt(request: string): Promise<string> {
+export async function buildPhaseAPrompt(request: string, targetFilePaths: string[] = []): Promise<string> {
+  let template: string;
   try {
-    let template = await fs.readFile(PROMPT_TEMPLATE_PATH, 'utf-8');
-
-    template = template.replace(/\{\{USER_REQUEST\}\}/g, request);
-    template = template.replace(/\{\{PROJECT_SUMMARY\}\}/g, 'プロジェクトルート: /');
-    template = template.replace(/\{\{TARGET_SOURCE_CODE\}\}/g, '※変更対象ファイルの指定なし');
-    template = template.replace(/\{\{DEPENDENCY_INTERFACES\}\}/g, '※記録なし');
-
-    // 意味記憶（スキル）の注入
-    const skills = await loadSkills();
-    template = template.replace(/\{\{SEMANTIC_MEMORY\}\}/g, skills || '※まだ蓄積されたスキルなし');
-
-    // エピソード記憶の注入
-    const episodes = await loadRecentEpisodes();
-    template = template.replace(/\{\{RELATED_EPISODES\}\}/g, episodes);
-
-    return template;
-  } catch (error) {
-    console.error('Failed to load phase_a_prompt_draft.md:', error);
-    throw error;
+    template = await fs.readFile(PROMPT_TEMPLATE_PATH, 'utf-8');
+  } catch (error: any) {
+    throw new Error(`プロンプトテンプレートファイルの読み込みに失敗しました: ${PROMPT_TEMPLATE_PATH} - ${error.message}`);
   }
+
+  template = template.replace(/\{\{USER_REQUEST\}\}/g, request);
+  template = template.replace(/\{\{PROJECT_SUMMARY\}\}/g, 'プロジェクトルート: /');
+
+  let targetSourceCode = '※変更対象ファイルの指定なし';
+  if (targetFilePaths.length > 0) {
+    const fileContents: string[] = [];
+    for (const filePath of targetFilePaths) {
+      try {
+        const content = await fs.readFile(filePath, 'utf-8');
+        fileContents.push(`--- ${filePath} ---\n${content}\n`);
+      } catch (fileError: any) {
+        // ここでのエラーは致命的ではないため、警告とユーザー向けメッセージとして処理
+        console.warn(`変更対象ファイルの読み込みに失敗しました: ${filePath} - ${fileError.message}`);
+        fileContents.push(`--- ${filePath} ---\n※ファイルの読み込み失敗: ${fileError.message}\n`);
+      }
+    }
+    targetSourceCode = fileContents.join('');
+  }
+  template = template.replace(/\{\{TARGET_SOURCE_CODE\}\}/g, targetSourceCode);
+  template = template.replace(/\{\{DEPENDENCY_INTERFACES\}\}/g, '※記録なし');
+
+  // 意味記憶（スキル）の注入
+  const skills = await loadSkills();
+  template = template.replace(/\{\{SEMANTIC_MEMORY\}\}/g, skills || '※まだ蓄積されたスキルなし');
+
+  // エピソード記憶の注入
+  const episodes = await loadRecentEpisodes();
+  template = template.replace(/\{\{RELATED_EPISODES\}\}/g, episodes);
+
+  return template;
 }
 
 /**
@@ -62,7 +87,7 @@ export function buildPhaseBPrompt(
   targetFileContent: string,
   cautionsFromPhaseA: any[]
 ): string {
-  const formattedCautions = cautionsFromPhaseA && cautionsFromPhaseA.length > 0 
+  const formattedCautions = cautionsFromPhaseA && cautionsFromPhaseA.length > 0
     ? cautionsFromPhaseA.map((c: any) => `- [${c.context}] ${c.instruction}`).join('\n')
     : '特になし';
 

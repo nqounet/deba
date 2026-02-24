@@ -55,10 +55,11 @@ program
   .command('plan')
   .description('Phase A: ユーザーの要望から要件定義と実装計画を生成する')
   .argument('<request>', '要件定義の元となるユーザーの要望')
-  .action(async (request: string) => {
+  .option('--file <path...>', '入力ファイル (複数指定可)') // 追加
+  .action(async (request: string, options: { file?: string[] }) => { // options引数と型定義を追加
     try {
       console.log('Building Phase A prompt...');
-      const prompt = await buildPhaseAPrompt(request);
+      const prompt = await buildPhaseAPrompt(request, options.file);
 
       console.log('Sending plan request to LLM...');
       const { text, meta } = await generateContent(prompt);
@@ -177,7 +178,6 @@ program
 
       await executeStep(targetStep, cautions, taskId);
 
-      console.log(`✅ Note: By default in Sprint 3, files are not automatically overwritten for safety.`);
       console.log(`[Snapshot saved to snapshots/${taskId}]`);
 
     } catch (error) {
@@ -192,7 +192,8 @@ program
   .command('run')
   .description('Phase A → Verify → Phase B を一気通貫で実行する')
   .argument('<request>', '要件定義の元となるユーザーの要望')
-  .action(async (request: string) => {
+  .option('--file <path...>', '入力ファイル (複数指定可)') // 追加
+  .action(async (request: string, options: { file?: string[] }) => { // options引数と型定義を追加
     try {
       const taskId = generateTaskId();
       console.log(`\nStarting Run Task: ${taskId}`);
@@ -204,7 +205,7 @@ program
       }
 
       console.log('\n--- Phase A (Plan) ---');
-      const prompt = await buildPhaseAPrompt(request);
+      const prompt = await buildPhaseAPrompt(request, options.file);
       
       console.log('Sending plan request to LLM (gemini-2.5-flash)...');
       const { text, meta } = await generateContent(prompt);
@@ -241,7 +242,6 @@ program
       await executeBatches(dagResult.batches, cautions, taskId);
 
       console.log(`\n🎉 Task ${taskId} completed successfully!`);
-      console.log(`✅ Note: By default in Sprint 4, files are not automatically overwritten for safety.`);
       console.log(`Check ${snapshotDir} for inputs/outputs.`);
     } catch (error) {
       console.error('Run command failed.', error);
