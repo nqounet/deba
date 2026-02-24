@@ -69,6 +69,7 @@ deba/
 ├── src/                  # TypeScript ソースコード
 │   ├── cli.ts            #   CLI エントリーポイント
 │   ├── ai.ts             #   LLM 呼び出し (gemini CLI)
+│   ├── commands/         #   CLI コマンド実装 (plan, run, review等)
 │   ├── prompt.ts         #   プロンプト構築 (Phase A/B/C)
 │   ├── validator.ts      #   Phase A 出力のバリデーション
 │   ├── dag.ts            #   依存グラフ → 並列バッチ構築
@@ -77,7 +78,9 @@ deba/
 │   ├── snapshot.ts       #   入出力スナップショット管理
 │   ├── episode.ts        #   エピソード記憶
 │   ├── growthLog.ts      #   成長ログ
-│   └── skills.ts         #   意味記憶（スキル）管理
+│   ├── skills.ts         #   意味記憶（スキル）管理
+│   ├── knowledge.ts      #   ドメイン知識抽出・管理
+│   └── utils/            #   ユーティリティ (git操作, クリーンアップ等)
 ├── docs/                 # ドキュメント群
 │   ├── design/           #   設計書（コンセプト〜詳細設計）
 │   ├── plans/            #   計画書（LLM 利用計画、開発計画）
