@@ -14,7 +14,8 @@ import { executeStep, executeBatches } from './runner.js';
 import { saveEpisode } from './episode.js';
 import { appendGrowthLog } from './growthLog.js';
 import { listSkills as listSkillsInfo, promoteToSkill } from './skills.js';
-import { getMainRepoRoot, createWorktree, getWorktreePath, mergeWorktree, removeWorktree } from './utils/git.js';
+import { getMainRepoRoot, createWorktree, getWorktreePath, mergeWorktree, removeWorktree, cleanWorktrees } from './utils/git.js';
+import { cleanSnapshots } from './utils/clean.js';
 
 const program = new Command();
 
@@ -503,6 +504,28 @@ program
     }
   });
 
+
+program
+  .command('clean')
+  .description('不要な Worktree や古いスナップショットを削除して整理する')
+  .option('--days <number>', '保持するスナップショットの日数 (デフォルト: 7)', '7')
+  .action(async (options: { days: string }) => {
+    try {
+      console.log('🧹 Cleaning up workspace...');
+      
+      // 1. Worktree のクリーンアップ
+      cleanWorktrees();
+      
+      // 2. スナップショットのクリーンアップ
+      const days = parseInt(options.days, 10);
+      await cleanSnapshots(days);
+      
+      console.log('✨ Cleanup complete.');
+    } catch (error) {
+      console.error('Cleanup command failed.', error);
+      process.exit(1);
+    }
+  });
 
 program
   .command('skills')

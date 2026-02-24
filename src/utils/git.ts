@@ -52,6 +52,41 @@ export function createWorktree(taskId: string): string {
 }
 
 /**
+ * git worktree list --porcelain の出力をパースし、
+ * deba-wt- で始まる一時的な worktree のリストを返す。
+ */
+export function getWorktreesToClean(porcelainOutput: string): string[] {
+  const lines = porcelainOutput.split('\n');
+  const worktrees: string[] = [];
+  for (const line of lines) {
+    if (line.startsWith('worktree ') && line.includes('deba-wt-')) {
+      worktrees.push(line.replace('worktree ', '').trim());
+    }
+  }
+  return worktrees;
+}
+
+/**
+ * deba-wt- で始まる一時的な worktree をすべて削除する。
+ */
+export function cleanWorktrees(): void {
+  const porcelain = execSync('git worktree list --porcelain', { encoding: 'utf8' });
+  const worktrees = getWorktreesToClean(porcelain);
+  
+  if (worktrees.length === 0) {
+    console.log('✅ No deba-wt worktrees to clean.');
+    return;
+  }
+
+  for (const wt of worktrees) {
+    // パスから taskId を抽出を試みる (deba-wt-task_20260225_001)
+    const taskIdMatch = wt.match(/deba-wt-(task_\d+_\d+)/);
+    const taskId = taskIdMatch ? taskIdMatch[1] : '';
+    removeWorktree(wt, taskId);
+  }
+}
+
+/**
  * 指定した taskId のブランチを現在のブランチにマージ（squash）する
  */
 export function mergeWorktree(taskId: string): void {
