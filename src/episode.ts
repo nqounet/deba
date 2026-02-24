@@ -2,8 +2,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { getMainRepoRoot } from './utils/git.js';
 
-const BRAIN_DIR = path.join(getMainRepoRoot(), 'brain');
-const EPISODES_DIR = path.join(BRAIN_DIR, 'episodes');
+const EPISODES_DIR = path.join(getMainRepoRoot(), 'brain', 'episodes');
 
 export interface EpisodeData {
   taskId: string;

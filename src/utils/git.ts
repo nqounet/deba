@@ -2,20 +2,39 @@ import { execSync } from 'child_process';
 import path from 'path';
 
 /**
- * メインリポジトリのルートディレクトリを取得する
- * Worktree 内から実行された場合でも、メインリポジトリのルートを返す
- * Git 管理下でない場合は process.cwd() を返す
+ * メインリポジトリのルートディレクトリ（本営）を確実に取得する。
+ * Worktree 内から実行された場合でも、Worktree ではない「メインのワーキングツリー」のルートを返す。
+ * Git 管理下でない場合は process.cwd() を返す。
  */
 export function getMainRepoRoot(): string {
   try {
-    // --git-common-dir は、worktree 内でもメインリポジトリの .git ディレクトリを返す
-    const commonDir = execSync('git rev-parse --git-common-dir', { encoding: 'utf8' }).trim();
-    const absCommonDir = path.resolve(process.cwd(), commonDir);
+    // 1. まず現在のワーキングツリーのルートを取得
+    const currentToplevel = execSync('git rev-parse --show-toplevel', { encoding: 'utf8' }).trim();
     
-    // .git ディレクトリ（または .git ファイルが指す実体）の親がリポジトリのルート
-    return path.dirname(absCommonDir);
+    // 2. メインリポジトリの共通 .git ディレクトリを取得
+    // Worktree の場合、これはメインリポジトリ内の .git ディレクトリを指す
+    const commonDir = execSync('git rev-parse --git-common-dir', { encoding: 'utf8' }).trim();
+    const absCommonDir = path.resolve(currentToplevel, commonDir);
+    
+    // 3. commonDir が ".git" で終わっている場合、その親がメインリポジトリのルート
+    // (通常、メインリポジトリでは commonDir は ".git" または絶対パスになる)
+    if (absCommonDir.endsWith('.git')) {
+      return path.dirname(absCommonDir);
+    }
+    
+    // Worktree の場合、commonDir はメインリポジトリの .git フォルダ内を指す
+    // 例: /path/to/main/.git/worktrees/task_xxx
+    // この場合は、".git" という名前のディレクトリが見つかるまで親に遡る
+    let current = absCommonDir;
+    while (current !== path.dirname(current)) {
+      if (path.basename(current) === '.git') {
+        return path.dirname(current);
+      }
+      current = path.dirname(current);
+    }
+
+    return currentToplevel;
   } catch (error) {
-    // Git リポジトリでない場合は現在のディレクトリをルートとする
     return process.cwd();
   }
 }
