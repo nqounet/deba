@@ -19,7 +19,7 @@ export function extractAndParseYaml(text: string): ParseResult {
   let raw = '';
   let initialError: string | undefined;
 
-  if (match && match[1]) {
+  if (match && match[1] !== undefined) {
     // 返す yamlRaw は抽出した文字列そのものとし、末尾の空白などは必要に応じて trim() してください。
     raw = match[1].trim();
   } else {

@@ -14,6 +14,7 @@ import { executeStep, executeBatches } from './runner.js';
 import { saveEpisode } from './episode.js';
 import { appendGrowthLog } from './growthLog.js';
 import { listSkills as listSkillsInfo, promoteToSkill } from './skills.js';
+import { getMainRepoRoot } from './utils/git.js';
 
 const program = new Command();
 
@@ -351,7 +352,7 @@ program
   .argument('<task_id>', 'レビュー対象のタスクID (例: task_20260223_020223)')
   .action(async (taskId: string) => {
     try {
-      const snapshotDir = path.join(process.cwd(), 'snapshots', taskId);
+      const snapshotDir = path.join(getMainRepoRoot(), 'snapshots', taskId);
 
       // スナップショットディレクトリの存在チェック
       try {
@@ -412,7 +413,7 @@ program
         // 既存スキルの読み込み（存在すれば）
         let currentSkills = '';
         try {
-          const skillsDir = path.join(process.cwd(), 'brain', 'skills');
+          const skillsDir = path.join(getMainRepoRoot(), 'brain', 'skills');
           const skillFiles = await fs.readdir(skillsDir);
           for (const sf of skillFiles) {
             if (sf.endsWith('.md')) {

@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import yaml from 'yaml';
+import { getMainRepoRoot } from './utils/git.js';
 
 export interface SnapshotData {
   input: string;
@@ -10,7 +11,7 @@ export interface SnapshotData {
 }
 
 export async function saveSnapshot(taskId: string, data: SnapshotData, prefix?: string): Promise<string> {
-  const snapshotDir = path.join(process.cwd(), 'snapshots', taskId);
+  const snapshotDir = path.join(getMainRepoRoot(), 'snapshots', taskId);
   
   await fs.mkdir(snapshotDir, { recursive: true });
 
