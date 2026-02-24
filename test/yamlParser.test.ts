@@ -116,4 +116,57 @@ item_list:
     expect(result.parsedObject).toBeNull();
     expect(result.yamlRaw).toBe('');
   });
+
+  it('閉じ記号（\`\`\`）がない不完全なブロックからデータを抽出できるべき', () => {
+    const text = `
+Here is the data:
+\`\`\`yaml
+name: Incomplete Block
+status: active`;
+    const result = extractAndParseYaml(text);
+    // remark は閉じ記号がなくても、ファイルの末尾までをコードブロックとして扱ってくれることを期待
+    expect(result.error).toBeUndefined();
+    expect(result.parsedObject).toEqual({ name: 'Incomplete Block', status: 'active' });
+    expect(result.yamlRaw).toBe('name: Incomplete Block\nstatus: active');
+  });
+
+  it('複数のコードブロックがある場合、最初の有効なブロックを採用するべき', () => {
+    const text = `
+Block 1:
+\`\`\`yaml
+id: 1
+\`\`\`
+Block 2:
+\`\`\`json
+{ "id": 2 }
+\`\`\`
+    `;
+    const result = extractAndParseYaml(text);
+    expect(result.parsedObject).toEqual({ id: 1 });
+  });
+
+  it('JSONと言語指定されているが実体がYAMLの場合でもパースできるべき', () => {
+    const text = `
+\`\`\`json
+key: this_is_actually_yaml
+value: 123
+\`\`\`
+    `;
+    const result = extractAndParseYaml(text);
+    expect(result.error).toBeUndefined();
+    expect(result.parsedObject).toEqual({ key: 'this_is_actually_yaml', value: 123 });
+  });
+
+  it('Markdown記号自体をパースしようとせず、中身だけを抽出するべき', () => {
+    // 以前問題になっていた、空のコードブロック記号自体がパース対象になってしまう問題の確認
+    const text = `
+テキスト
+\`\`\`yaml
+\`\`\`
+テキスト
+    `;
+    const result = extractAndParseYaml(text);
+    expect(result.parsedObject).toBeNull();
+    expect(result.yamlRaw).toBe('');
+  });
 });
