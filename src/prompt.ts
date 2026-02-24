@@ -73,20 +73,18 @@ export async function buildPhaseAPrompt(request: string, targetFilePaths: string
   const skills = await loadSkills();
   
   // 知識ベース（SKR）の検索と注入
-  // 要望に含まれる単語から簡易的に検索（実際にはよりスマートなキーワード抽出が望ましいが、まずは全体一致/部分一致を狙う）
-  // 複数のキーワードで検索するために、スペースで区切られた単語も考慮する
-  const searchKeywords = request.split(/\s+/).filter(w => w.length > 1);
-  const allKnowledgeResults = [];
-  for (const kw of [...searchKeywords, request]) {
-     const results = await searchKnowledge(kw);
-     allKnowledgeResults.push(...results);
-  }
-  // 重複を削除
-  const uniqueKnowledgeResults = Array.from(new Map(allKnowledgeResults.map(r => [r.filename, r])).values());
+  // 要望に含まれる単語からキーワードを抽出
+  const searchKeywords = request
+    .split(/[\s,，.．、。]+/)
+    .filter(w => w.length > 1 && !/^(あ|い|う|え|お|は|の|に|を|と|が|で|も)$/.test(w));
+  
+  const allKeywords = Array.from(new Set([...searchKeywords, request]));
+  const uniqueKnowledgeResults = await searchKnowledge(allKeywords);
+
   if (uniqueKnowledgeResults.length > 0) {
-    console.log(`💡 知識ベース(SKR)から ${uniqueKnowledgeResults.length} 件の知見を注入しました`);
+    console.log(`💡 知識ベース(SKR)から ${uniqueKnowledgeResults.length} 件の知見を注入しました (Top: ${uniqueKnowledgeResults[0].content.summary})`);
   }
-  const knowledgePrompt = formatKnowledgeForPrompt(uniqueKnowledgeResults);
+  const knowledgePrompt = formatKnowledgeForPrompt(uniqueKnowledgeResults.slice(0, 5)); // 上位5件に絞る
 
   // スキルと知識ベースの内容を結合して注入
   const combinedMemory = `## 承認済みスキル\n${skills || '※まだ蓄積されたスキルなし'}\n\n## 過去の知見 (Knowledge Base)\n${knowledgePrompt}`;

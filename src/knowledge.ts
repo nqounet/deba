@@ -18,35 +18,52 @@ export interface KnowledgeResult {
 }
 
 /**
- * キーワードに基づいて知識ベースを検索する
+ * 複数のキーワードに基づいて知識ベースを検索し、関連度順にソートして返す
  */
-export async function searchKnowledge(query: string): Promise<KnowledgeResult[]> {
+export async function searchKnowledge(queries: string[]): Promise<KnowledgeResult[]> {
   try {
     const entries = await fs.readdir(KNOWLEDGE_DIR);
     const jsonFiles = entries.filter(f => f.endsWith('.json'));
     
-    const results: KnowledgeResult[] = [];
-    const queryLower = query.toLowerCase();
+    const scoredResults: { score: number; result: KnowledgeResult }[] = [];
+    const queryLowers = queries.map(q => q.toLowerCase()).filter(q => q.length > 0);
+
+    if (queryLowers.length === 0) return [];
 
     for (const file of jsonFiles) {
       const filePath = path.join(KNOWLEDGE_DIR, file);
       const raw = await fs.readFile(filePath, 'utf-8');
       const content = JSON.parse(raw) as Knowledge;
 
-      const searchText = [
-        content.summary,
-        ...(content.keywords || []),
-        ...(content.facts || []),
-        file
-      ].join(' ').toLowerCase();
+      const summaryLower = (content.summary || '').toLowerCase();
+      const keywordsLower = (content.keywords || []).map(k => k.toLowerCase());
+      const factsLower = (content.facts || []).map(f => f.toLowerCase());
 
-      if (searchText.includes(queryLower)) {
-        results.push({ filename: file, content });
+      let score = 0;
+      for (const query of queryLowers) {
+        // サマリーに含まれる場合は高いスコア
+        if (summaryLower.includes(query)) score += 10;
+        // キーワードに完全一致する場合は高いスコア
+        if (keywordsLower.includes(query)) score += 5;
+        // 事実に含まれる場合は中程度のスコア
+        if (factsLower.some(f => f.includes(query))) score += 3;
+        // キーワードに部分一致する場合
+        if (keywordsLower.some(k => k.includes(query))) score += 2;
+      }
+
+      if (score > 0) {
+        scoredResults.push({
+          score,
+          result: { filename: file, content }
+        });
       }
     }
-    return results;
+
+    // スコア降順でソートして、KnowledgeResultのみを返す
+    return scoredResults
+      .sort((a, b) => b.score - a.score)
+      .map(sr => sr.result);
   } catch (error) {
-    // ディレクトリがない場合は空の結果を返す
     return [];
   }
 }
