@@ -61,11 +61,23 @@ export async function executeStep(step: any, cautions: any[], taskId: string, wo
   console.log(`Sending execution request to lightweight model (gemini-2.5-flash) for step ${step.id}...`);
   
   const systemInstruction = "あなたは優秀なプログラマーです。プロンプトの指示に厳密に従い、変更後の完全なコードのみを出力してください。Markdownのコードブロック記号は不要です。";
-  let { text, meta } = await generateContent(prompt, 'gemini-2.5-flash', systemInstruction);
+  const { text: rawOutput, meta } = await generateContent(prompt, 'gemini-2.5-flash', systemInstruction);
+
+  // Markdownのコードブロックが含まれている場合は中身を抽出する
+  let text = rawOutput;
+  const codeBlockRegex = /```(?:\w+)?\n([\s\S]*?)\n```/g;
+  const matches = [...rawOutput.matchAll(codeBlockRegex)];
+  if (matches.length > 0) {
+    // 最初のコードブロックを採用
+    text = matches[0][1].trim();
+  } else {
+    // コードブロックがない場合、もし先頭か末尾にバッククォートがあれば除去する（極稀なケース）
+    text = rawOutput.replace(/^```(?:\w+)?\n/, '').replace(/\n```$/, '').trim();
+  }
 
   await saveSnapshot(taskId, {
     input: prompt,
-    outputRaw: text,
+    outputRaw: rawOutput,
     meta: meta,
   }, `step_${step.id}`);
 
@@ -79,6 +91,10 @@ export async function executeStep(step: any, cautions: any[], taskId: string, wo
     if (text.trim().startsWith('AMBIGUITY:')) {
       console.warn(`⚠️ Skipped applying changes because AI reported ambiguity.`);
       return { text };
+    }
+
+    if (step.target_files.length > 1) {
+      console.warn(`⚠️ Multiple target files specified for step ${step.id}. Applying changes only to the first file: ${step.target_files[0]}`);
     }
 
     const targetFile = step.target_files[0];
