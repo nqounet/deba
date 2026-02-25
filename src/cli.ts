@@ -5,7 +5,7 @@ import { validateCommand, executeCommand } from './commands/utils.js';
 import { runCommand, runPlanCommand } from './commands/run.js';
 import { reviewCommand } from './commands/review.js';
 import { workerCommand } from './commands/worker.js';
-import { cleanCommand, skillsCommand, skillsPromoteCommand, promoteLearningsCommand } from './commands/maintenance.js';
+import { cleanCommand, skillsCommand, skillsPromoteCommand, promoteLearningsCommand, consolidateSkillsCommand } from './commands/maintenance.js';
 import { worktreeAddCommand } from './commands/worktree.js';
 
 const program = new Command();
@@ -74,28 +74,37 @@ program
   .option('-y, --yes', 'タスクを自動承認し、マージとWorktreeの削除を行う')
   .action(reviewCommand);
 
-program
+const maintenance = program
+  .command('maintenance')
+  .description('メンテナンスコマンド');
+
+maintenance
   .command('clean')
   .description('不要な Worktree や古いスナップショットを削除して整理する')
   .option('--days <number>', '保持するスナップショットの日数 (デフォルト: 7)', '7')
   .action(cleanCommand);
 
-program
+maintenance
   .command('skills')
   .description('獲得したスキル（意味記憶）の一覧を表示する')
   .action(skillsCommand);
 
-program
+maintenance
   .command('skills-promote')
   .description('学び候補をスキル（意味記憶）に昇格する')
   .argument('<rule>', '昇格するルール文')
   .option('--project <name>', 'プロジェクト名', 'default')
   .action(skillsPromoteCommand);
 
-program
+maintenance
   .command('promote')
   .description('成長ログから学び候補を対話形式でスキルに昇格する')
   .option('-y, --yes', '全ての項目を自動で承認してスキルに昇格する')
   .action(promoteLearningsCommand);
+
+maintenance
+  .command('consolidate-skills')
+  .description('重複するスキルや冗長なスキルを統合・整理する')
+  .action(consolidateSkillsCommand);
 
 program.parse(process.argv);

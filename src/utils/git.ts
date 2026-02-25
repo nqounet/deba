@@ -1,5 +1,6 @@
 import { execSync } from 'child_process';
 import path from 'path';
+import fs from 'fs';
 
 /**
  * メインリポジトリのルートディレクトリ（本営）を確実に取得する。
@@ -44,7 +45,7 @@ export function getMainRepoRoot(): string {
  */
 export function getWorktreePath(taskId: string): string {
   const mainRoot = getMainRepoRoot();
-  return path.resolve(mainRoot, '..', `deba-wt-${taskId}`);
+  return path.resolve(mainRoot, '.worktrees', `deba-wt-${taskId}`);
 }
 
 /**
@@ -59,6 +60,12 @@ export function createWorktree(taskId: string): string {
   console.log(`Branch: ${branchName}`);
 
   try {
+    // .worktrees ディレクトリを確実に作成
+    const worktreesBase = path.dirname(worktreeDir);
+    if (!fs.existsSync(worktreesBase)) {
+      fs.mkdirSync(worktreesBase, { recursive: true });
+    }
+
     // 既存の worktree や branch があれば削除（念のため）
     try { execSync(`git worktree remove ${worktreeDir} --force`, { stdio: 'ignore' }); } catch {}
     try { execSync(`git branch -D ${branchName}`, { stdio: 'ignore' }); } catch {}

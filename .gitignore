@@ -3,3 +3,4 @@ node_modules/
 snapshots/
 build/
 brain/
+.worktrees/

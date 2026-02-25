@@ -11,7 +11,7 @@ import { getMainRepoRoot } from '../utils/git.js';
  */
 export async function worktreeAddCommand(repoPath: string, branchName: string, options: { name?: string }) {
   const debaRoot = getMainRepoRoot();
-  const worktreesDir = path.join(debaRoot, 'worktrees');
+  const worktreesDir = path.join(debaRoot, '.worktrees');
 
   try {
     // 1. ターゲットリポジトリの存在確認

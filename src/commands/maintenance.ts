@@ -5,12 +5,12 @@ import { listSkills as listSkillsInfo, promoteToSkill } from '../skills.js';
 import { cleanWorktrees, getMainRepoRoot } from '../utils/git.js';
 import { cleanSnapshots } from '../utils/clean.js';
 import { getPendingLearnings, markAsApproved } from '../growthLog.js';
+import { generateContent } from '../ai.js';
 
 const PROPOSALS_DIR = path.join(getMainRepoRoot(), 'brain', 'skills', 'proposals');
 const SKILLS_DIR = path.join(getMainRepoRoot(), 'brain', 'skills');
 
 function askQuestion(query: string): Promise<string> {
-// ... (existing code remains)
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -117,4 +117,45 @@ export async function promoteLearningsCommand(options: { yes?: boolean }) {
   }
 
   console.log('\n✨ すべての項目の確認が完了しました。');
+}
+
+export async function consolidateSkillsCommand() {
+  console.log('🚀 スキルファイルの統合を開始します...');
+  let files: string[] = [];
+  try {
+    files = await fs.readdir(SKILLS_DIR);
+    files = files.filter(f => f.endsWith('.md'));
+  } catch (error) {
+    console.error(`エラー: スキルディレクトリ '${SKILLS_DIR}' の読み込みに失敗しました。`, error);
+    return;
+  }
+
+  if (files.length === 0) {
+    console.log('✨ 統合するスキルファイルはありませんでした。');
+    return;
+  }
+
+  for (const file of files) {
+    const filePath = path.join(SKILLS_DIR, file);
+    console.log(`🔄 ファイルをリファクタリング中: ${filePath}`);
+
+    try {
+      const originalContent = await fs.readFile(filePath, 'utf-8');
+      
+      const prompt = `以下のドキュメントを整形してください。
+生成されたドキュメント本体以外のテキスト（例: 確認の言葉、Markdownのコードブロック記号など）は一切含めないでください。
+
+${originalContent}`;
+
+      const consolidatedContent = await generateContent(prompt);
+      
+      await fs.writeFile(filePath, consolidatedContent.text);
+      console.log(`✅ ${filePath} をリファクタリングし、上書き保存しました。`);
+
+    } catch (error) {
+      console.error(`❌ ${filePath} の処理中にエラーが発生しました:`, error);
+      console.error('LLMとの通信に失敗したか、ファイルの上書きに問題がありました。');
+    }
+  }
+  console.log('🎉 スキルファイルの統合が完了しました。');
 }
