@@ -1,0 +1,26 @@
+[tools]
+node = "22"
+
+[tasks.build]
+description = "TypeScript のビルドを実行します"
+run = "npm run build"
+
+[tasks.test]
+description = "テストを実行します"
+run = "npm test"
+
+[tasks.setup]
+description = "プロジェクトのセットアップ（依存関係インストール、ビルド、スキルのインストール）を実行します"
+run = [
+  "npm install",
+  "mise run build",
+  "node build/cli.js maintenance setup-skill"
+]
+
+[tasks.run]
+description = "Deba を実行します"
+run = "node build/cli.js run {{arg(name='query')}}"
+
+[tasks.plan]
+description = "Deba で計画（Phase A）のみを実行します"
+run = "node build/cli.js plan {{arg(name='query')}}"
