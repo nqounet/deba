@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { loadSkills } from './skills.js';
 import { searchKnowledge, formatKnowledgeForPrompt } from './knowledge.js';
 import { getMainRepoRoot } from './utils/git.js';
+import { loadIngestion } from './ingestion.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -55,7 +56,9 @@ export async function buildPhaseAPrompt(request: string, targetFilePaths: string
   }
 
   template = template.replace(/\{\{USER_REQUEST\}\}/g, request);
-  template = template.replace(/\{\{PROJECT_SUMMARY\}\}/g, 'プロジェクトルート: /');
+  
+  const ingestionContent = await loadIngestion();
+  template = template.replace(/\{\{PROJECT_SUMMARY\}\}/g, ingestionContent);
 
   let targetSourceCode = '※変更対象ファイルの指定なし';
   if (targetFilePaths.length > 0) {
