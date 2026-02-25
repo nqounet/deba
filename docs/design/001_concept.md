@@ -7,37 +7,24 @@ Deba は、既存の Git リポジトリ内に「エージェント専用の作�
 
 ## 2. ディレクトリ構造とデータ管理
 
-プロジェクトルート直下に以下のディレクトリを自動生成し、状態を管理します。
+Deba は、プロジェクトのリポジトリをクリーンに保つため、すべての知識（Brain）、スナップショット、作業領域（Worktrees）をユーザーのホームディレクトリ配下に集約して管理します。
 
-### 2.1 Project Brain (`brain/`)
+### 2.1 Global Repository Storage (`~/.deba/repos/{remote_path}/`)
 
-エージェントの知識、経験、獲得したスキルが集約される場所です。
-
-```text
-brain/
-├── ingestion.md              # プロジェクト全体の解析結果（技術スタック、ディレクトリ構造、主要ファイルの役割）
-├── episodes/                 # タスクごとの実行記録（成功・失敗のコンテキスト）
-├── skills/                   # 承認済みのスキル（コーディング規約・ベストプラクティス）
-│   ├── proposals/            # 承認待ちのスキル提案
-│   └── *_conventions.md      # プロジェクト別・言語別の規約ドキュメント
-├── growth_log/               # 日々の学びの集約ログ
-└── queue/                    # 非同期実行用のタスクキュー
-```
-
-### 2.2 Managed Worktrees (`.worktrees/`)
-
-エージェントが隔離環境で作業するためのディレクトリ群です。`.gitignore` により Git 管理からは除外されます。
+各リポジトリの `origin` URL に基づいた名前空間でデータを隔離保存します。
+例: `ssh://git@github.com/nqounet/deba.git` -> `~/.deba/repos/github.com/nqounet/deba/`
 
 ```text
-.worktrees/
-└── deba-wt-{task_id}/        # git worktree で一時的に作成される作業実体
-    ├── .git                  # メインリポジトリを指す .git ファイル
-    └── (Source Code)         # 特定のブランチがチェックアウトされたコード
+~/.deba/repos/{remote_path}/
+├── brain/                    # エージェントの知識
+│   ├── ingestion.md          # プロジェクト解析結果
+│   ├── episodes/             # 実行記録
+│   ├── skills/               # 承認済みスキル
+│   └── growth_log/           # 学びの集約ログ
+├── snapshots/                # LLM 入出力履歴
+└── worktrees/                # 隔離実行用の作業領域
+    └── deba-wt-{task_id}/    # 一時的な Git Worktree 実体
 ```
-
-### 2.3 Snapshots (`snapshots/`)
-
-LLM とのやり取り（プロンプト全文、生レスポンス、パース結果、メタ情報）の全ての履歴です。
 
 ---
 
@@ -45,11 +32,7 @@ LLM とのやり取り（プロンプト全文、生レスポンス、パース�
 
 ### A. Ingestion (プロジェクト取り込み)
 
-初めてのリポジトリ作業時、または大規模な構成変更があった際、Deba は自動的に `ingestion` を実行します。
-
-1. **スキャン**: プロジェクトのファイルツリー、`package.json`、`README.md` などを読み込みます。
-2. **解析**: LLM を使用して、プロジェクトの目的、技術スタック、設計パターン、主要モジュールの依存関係を解析します。
-3. **知識化**: 解析結果を `brain/ingestion.md` に保存します。このファイルは以降の全タスクで「プロジェクトの地図」としてプロンプトに注入されます。
+初めてのリポジトリ作業時、Deba は自動的に `ingestion` を実行し、その結果をグローバルストレージの `brain/ingestion.md` に保存します。これにより、リポジトリ内を汚すことなく、エージェントがプロジェクトの構造を理解できます。
 
 ### B. 隔離実行 (Git Worktree)
 

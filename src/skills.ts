@@ -1,8 +1,8 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { getMainRepoRoot } from './utils/git.js';
+import { getRepoStorageRoot } from './utils/git.js';
 
-const BRAIN_DIR = path.join(getMainRepoRoot(), 'brain');
+const BRAIN_DIR = path.join(getRepoStorageRoot(), 'brain');
 const SKILLS_DIR = path.join(BRAIN_DIR, 'skills');
 
 /**

@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { getMainRepoRoot } from './git.js';
+import { getRepoStorageRoot } from './git.js';
 
 /**
  * スナップショットディレクトリのリストを受け取り、指定した日数より古いディレクトリ名を返す。
@@ -21,7 +21,7 @@ export function getSnapshotsToClean(dirs: { name: string, mtime: number }[], day
  * @param days 保持する日数
  */
 export async function cleanSnapshots(days: number = 7): Promise<void> {
-  const snapshotsRoot = path.join(getMainRepoRoot(), 'snapshots');
+  const snapshotsRoot = path.join(getRepoStorageRoot(), 'snapshots');
   try {
     const entries = await fs.readdir(snapshotsRoot, { withFileTypes: true });
     const dirInfos = [];

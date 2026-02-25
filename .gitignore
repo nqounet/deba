@@ -1,6 +1,8 @@
 node_modules/
 .npm-cache/
-snapshots/
 build/
-brain/
-.worktrees/
+
+# Deba storage moved to ~/.deba/repos/ (Global Centralized Storage)
+# brain/
+# snapshots/
+# .worktrees/

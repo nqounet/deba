@@ -2,13 +2,13 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as readline from 'readline';
 import { listSkills as listSkillsInfo, promoteToSkill } from '../skills.js';
-import { cleanWorktrees, getMainRepoRoot } from '../utils/git.js';
+import { cleanWorktrees, getMainRepoRoot, getRepoStorageRoot } from '../utils/git.js';
 import { cleanSnapshots } from '../utils/clean.js';
 import { getPendingLearnings, markAsApproved } from '../growthLog.js';
 import { generateContent } from '../ai.js';
 
-const PROPOSALS_DIR = path.join(getMainRepoRoot(), 'brain', 'skills', 'proposals');
-const SKILLS_DIR = path.join(getMainRepoRoot(), 'brain', 'skills');
+const PROPOSALS_DIR = path.join(getRepoStorageRoot(), 'brain', 'skills', 'proposals');
+const SKILLS_DIR = path.join(getRepoStorageRoot(), 'brain', 'skills');
 
 function askQuestion(query: string): Promise<string> {
   const rl = readline.createInterface({
