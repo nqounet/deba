@@ -3,7 +3,7 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { loadSkills } from './skills.js';
 import { searchKnowledge, formatKnowledgeForPrompt } from './knowledge.js';
-import { getMainRepoRoot } from './utils/git.js';
+import { getMainRepoRoot, getRepoStorageRoot } from './utils/git.js';
 import { loadIngestion } from './ingestion.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -12,7 +12,7 @@ const __dirname = path.dirname(__filename);
 // docs/drafts/phase_a_prompt_template.md のパス (debaプロジェクト内の相対パス)
 const DEBA_PROJECT_ROOT = path.resolve(__dirname, '..');
 const PROMPT_TEMPLATE_PATH = path.join(DEBA_PROJECT_ROOT, 'docs', 'drafts', 'phase_a_prompt_template.md');
-const EPISODES_DIR = path.join(getMainRepoRoot(), 'brain', 'episodes');
+const EPISODES_DIR = path.join(getRepoStorageRoot(), 'brain', 'episodes');
 
 /**
  * 直近のエピソード記録を最大N件読み込む

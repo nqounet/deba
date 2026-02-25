@@ -1,13 +1,13 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { getMainRepoRoot } from './git.js';
+import { getRepoStorageRoot } from './git.js';
 
 /**
  * キューの状態を表すディレクトリ名の定義
  */
 export type QueueStatus = 'todo' | 'doing' | 'done' | 'failed';
 
-const QUEUE_ROOT = path.join(getMainRepoRoot(), 'brain', 'queue');
+const QUEUE_ROOT = path.join(getRepoStorageRoot(), 'brain', 'queue');
 
 /**
  * キューに必要なディレクトリ構造を初期化する

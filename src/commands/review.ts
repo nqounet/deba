@@ -9,7 +9,7 @@ import { extractAndParseYaml } from '../yamlParser.js';
 import { saveEpisode } from '../episode.js';
 import { appendGrowthLog } from '../growthLog.js';
 import { saveKnowledge, Knowledge } from '../knowledge.js';
-import { getMainRepoRoot, getWorktreePath, mergeWorktree, removeWorktree } from '../utils/git.js';
+import { getMainRepoRoot, getRepoStorageRoot, getWorktreePath, mergeWorktree, removeWorktree } from '../utils/git.js';
 
 function askQuestion(query: string): Promise<string> {
   const rl = readline.createInterface({
@@ -106,7 +106,7 @@ export async function reviewCommand(taskId: string, options: { yes?: boolean } =
 
     let currentSkills = '';
     try {
-      const skillsDir = path.join(getMainRepoRoot(), 'brain', 'skills');
+      const skillsDir = path.join(getRepoStorageRoot(), 'brain', 'skills');
       const skillFiles = await fs.readdir(skillsDir);
       for (const sf of skillFiles) {
         if (sf.endsWith('.md')) {

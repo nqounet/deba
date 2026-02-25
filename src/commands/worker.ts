@@ -2,12 +2,12 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { initQueueDirs, getQueueDirPath, moveTask } from '../utils/queue.js';
 import { executeStep } from '../runner.js';
-import { createWorktree, getMainRepoRoot } from '../utils/git.js';
+import { createWorktree, getMainRepoRoot, getRepoStorageRoot } from '../utils/git.js';
 import { buildSkillSuggestionPrompt } from '../prompt.js';
 import { generateContent } from '../ai.js';
 import { extractAndParseYaml } from '../yamlParser.js';
 
-const PROPOSALS_DIR = path.join(getMainRepoRoot(), 'brain', 'skills', 'proposals');
+const PROPOSALS_DIR = path.join(getRepoStorageRoot(), 'brain', 'skills', 'proposals');
 
 async function suggestSkillFromSuccess(taskDescription: string, taskResult: string) {
   console.log(`\n[Worker] 💡 成功体験からスキルを抽出しています...`);
