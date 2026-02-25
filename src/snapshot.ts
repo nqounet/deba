@@ -36,10 +36,22 @@ export async function saveSnapshot(taskId: string, data: SnapshotData, prefix?: 
   return snapshotDir;
 }
 
-// 簡単な task_id ジェネレータ
+import crypto from 'crypto';
+
+// 精度の高い task_id ジェネレータ
 export function generateTaskId(): string {
   const now = new Date();
-  const dateStr = now.toISOString().split('T')[0].replace(/-/g, ''); // yyyymmdd
-  const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, ''); // hhmmss
-  return `task_${dateStr}_${timeStr}`;
+  // YYYYMMDD_HHMMSS
+  const dateStr = now.getUTCFullYear().toString() +
+    (now.getUTCMonth() + 1).toString().padStart(2, '0') +
+    now.getUTCDate().toString().padStart(2, '0');
+  
+  const timeStr = now.getUTCHours().toString().padStart(2, '0') +
+    now.getUTCMinutes().toString().padStart(2, '0') +
+    now.getUTCSeconds().toString().padStart(2, '0');
+    
+  // UUID の最初のセクション (8文字) を使用して衝突を避ける
+  const randomPart = crypto.randomUUID().split('-')[0];
+
+  return `task_${dateStr}_${timeStr}_${randomPart}`;
 }
