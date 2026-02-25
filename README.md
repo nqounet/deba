@@ -1,22 +1,51 @@
 # Deba
 
-**「成長する新人エンジニア」** をコンセプトとした AI エージェント CLI ツール。
+**あなたのコードで育ち、裏側で働く「専属の新人エンジニア」**
 
-ユーザーの要望を受け取り、要件定義・実装計画の生成（Phase A）→ コード変更の生成（Phase B）→ フィードバックからの学習（Phase C）を一気通貫で実行します。タスクを重ねるごとに過去の学びが蓄積され、ユーザーの介入なしに高品質な成果物を生成できるよう「成長」していきます。
+Deba（Developer's Evolving Brain Agent）は、既存のGitリポジトリに寄り添い、あなたと共に成長する自律型AIエージェントCLIです。
 
-## 特長
+一般的なAIコーディングツールがあなたのエディタに介入するのに対し、Debaは**「Git Worktree」を用いた隔離環境**であなたと並行してタスクをこなします。さらに、タスクを重ねるごとにプロジェクト固有の規約やあなたのフィードバックを学習し、ユーザーの介入なしに高品質な成果物を生み出せるように「成長」していきます。
 
-- **3フェーズ実行** — 上流判断（Phase A）で要件定義・実装計画・注意事項を一括生成し、実装（Phase B）で並列コード生成、振り返り（Phase C）でフィードバックから学習
-- **3層記憶モデル** — エピソード記憶（タスク経験）→ 成長ログ（学びの追跡）→ 意味記憶（承認済みスキル）の3層で「成長」を実現
-- **入出力の透明性** — すべての LLM 呼び出しの入出力をスナップショットとして自動保存し、対比・再現が可能
-- **外部 SDK 不要** — `gemini` CLI を直接呼び出すシンプルなアーキテクチャ
+## ✨ コア・エクスペリエンス
 
-## セットアップ
+* **裏側で働く（Git-Native Isolation）**
+あなたの現在の作業ブランチを一切汚しません。裏側で自動的に Worktree を作成し、そこでコードの変更やテストを実行します。
+* **あなたのコードで育つ（Contextual Evolution）**
+一般的な知識ではなく「あなたのプロジェクトの文脈」を学習します。エピソード記憶（成功/失敗体験）から意味記憶（プロジェクト規約）へと知識を昇華させ、同じミスを繰り返しません。
+* **完全なポータビリティ（Clean Repository）**
+学習した知識（Brain）はリポジトリ内ではなく、グローバル環境（`~/.deba/`）にプロジェクトごとに集約されます。メインのリポジトリをクリーンに保ちつつ、コンテキストを永続化します。
+
+## 🔄 ワークフローと成長サイクル
+
+Debaは「計画 → 実行 → 振り返り」の3フェーズを一気通貫で行います。
+
+```mermaid
+graph TD
+    A["ユーザーの指示"] --> B["Phase A: 要件定義・計画生成"]
+    B --> C["Phase B: Worktreeでの隔離実行"]
+    C --> D["Phase C: フィードバックと学習"]
+    
+    D -.->|"学びの蓄積 (Brain)"| E[/"エピソード記憶 & 成長ログ"/]
+    E -.->|"コンテキストの注入"| B
+    
+    style B fill:#f9f9f9,stroke:#333,stroke-width:2px
+    style C fill:#e1f5fe,stroke:#03a9f4,stroke-width:2px
+    style D fill:#f9f9f9,stroke:#333,stroke-width:2px
+
+```
+
+1. **Phase A (Plan)**: ユーザーの要望と過去の記憶から、実装計画と注意事項（YAML）を一括生成。
+2. **Phase B (Execute)**: 計画に基づき、Worktree内で自律的にコードを生成・変更。
+3. **Phase C (Review)**: ユーザーのフィードバックを受け取り、学びを抽出して次回以降のタスクに活かす。
+
+---
+
+## 🚀 セットアップ
 
 ### 前提条件
 
-- Node.js
-- [Gemini CLI](https://github.com/google-gemini/gemini-cli) がインストール済みであること
+* Node.js
+* [Gemini CLI](https://github.com/google-gemini/gemini-cli) がインストール済みであること
 
 ### インストール
 
@@ -26,97 +55,67 @@ cd deba
 npm install
 npm run build
 
-# エージェント用スキル定義のインストール
+# エージェント用スキル定義の初期化
 npm run deba -- maintenance setup-skill
+
 ```
 
-## 使い方
+## 💻 使い方
 
-```bash
-# ビルド
-npm run build
+基本的には、`npm run deba -- <command>` の形式で実行します。
 
-# ビルド＋実行
-npm run deba -- <command>
-```
-
-### コマンド一覧
+### 主要コマンド一覧
 
 | コマンド | 説明 |
-|---------|------|
-| `deba chat <message>` | 単純な LLM チャット |
-| `deba plan <request>` | Phase A: 要件定義と実装計画を YAML で生成 |
-| `deba validate <file>` | Phase A 出力のスキーマ / DAG 検証 |
-| `deba execute --step <id> --plan <file>` | Phase B: 単一ステップのコード生成 |
-| `deba run <request>` | Plan → Validate → Execute の一気通貫実行 |
-| `deba review <task_id>` | Phase C: フィードバック → エピソード記録 → Reflection |
-| `deba skills` | 獲得スキル一覧の表示 |
-| `deba skills-promote <rule>` | 学びをスキル（意味記憶）に昇格 |
+| --- | --- |
+| `deba run <request>` | **【推奨】** 計画作成 → 検証 → 実装 の一気通貫実行 |
+| `deba review <task_id>` | **【重要】** タスク完了後のフィードバックと学習の実行 |
+| `deba plan <request>` | Phase A: 要件定義と実装計画のみを生成 |
+| `deba execute --step <id> --plan <file>` | Phase B: 計画に基づく単一ステップの実行 |
+| `deba validate <file>` | 計画ファイル（YAML）のスキーマ / 依存グラフ検証 |
+| `deba skills` | 現在エージェントが獲得しているスキル（規約）の一覧表示 |
+| `deba skills-promote <rule>` | 学びを正式なスキル（意味記憶）に昇格させる |
+| `deba chat <message>` | シンプルな LLM チャット |
 
 ### 実行例
 
 ```bash
-# 要件定義・実装計画の生成
-npm run deba -- plan "ユーザー登録フォームにバリデーションを追加して"
+# 1. タスクの依頼（裏側でWorktreeが作られ、作業が進行します）
+npm run deba -- run "ヘッダーコンポーネントをナビゲーションとロゴに分割して"
 
-# 計画→検証→実装の一気通貫実行
-npm run deba -- run "ヘッダーコンポーネントを分割して"
-
-# タスク完了後のフィードバック
+# 2. 作業完了後、結果に対するフィードバックを与えてエージェントを成長させます
 npm run deba -- review task_20260223_001
-```
-
-## ディレクトリ構成
 
 ```
+
+## 📁 アーキテクチャとディレクトリ構成
+
+Debaは、外部SDKに依存せず `gemini` CLI を直接呼び出すシンプルかつ堅牢な設計を採用しています。さらに、すべてのLLM入出力をスナップショットとして保存し、完全な透明性と再現性を担保しています。
+
+```text
 deba/
 ├── src/                  # TypeScript ソースコード
-│   ├── cli.ts            #   CLI エントリーポイント
-│   ├── ai.ts             #   LLM 呼び出し (gemini CLI)
-│   ├── commands/         #   CLI コマンド実装 (plan, run, review等)
-│   ├── prompt.ts         #   プロンプト構築 (Phase A/B/C)
-│   ├── validator.ts      #   Phase A 出力のバリデーション
-│   ├── dag.ts            #   依存グラフ → 並列バッチ構築
-│   ├── runner.ts         #   バッチ実行エンジン
-│   ├── yamlParser.ts     #   YAML パーサー
-│   ├── snapshot.ts       #   入出力スナップショット管理
-│   ├── episode.ts        #   エピソード記憶
-│   ├── growthLog.ts      #   成長ログ
-│   ├── skills.ts         #   意味記憶（スキル）管理
-│   ├── knowledge.ts      #   ドメイン知識抽出・管理
-│   └── utils/            #   ユーティリティ (git操作, クリーンアップ等)
-├── docs/                 # ドキュメント群
-│   ├── design/           #   設計書（コンセプト〜詳細設計）
-│   ├── plans/            #   計画書（LLM 利用計画、開発計画）
-│   └── drafts/           #   プロンプトドラフト等
-├── brain/                # ローカル学習データ（.gitignore 対象）
-│   ├── skills/           #   意味記憶（承認済みルール）
-│   └── episodes/         #   エピソード記憶
-├── snapshots/            # LLM 入出力スナップショット（.gitignore 対象）
-└── build/                # コンパイル済み JS（.gitignore 対象）
+│   ├── cli.ts            # CLI エントリーポイント
+│   ├── commands/         # CLI コマンド実装 (plan, run, review等)
+│   ├── prompt.ts         # 動的プロンプト構築 (Phase A/B/C)
+│   ├── episode.ts        # エピソード記憶管理
+│   ├── growthLog.ts      # 成長ログ管理
+│   └── skills.ts         # 意味記憶（スキル）管理
+├── docs/                 # 設計・計画ドキュメント群
+├── brain/                # ローカル学習データ（.gitignore対象）
+└── snapshots/            # LLM 入出力履歴（.gitignore対象）
+
 ```
 
-## 設計ドキュメント
+> **Note**: 詳細な設計思想（Worktree連携、3層記憶モデル、LLM利用計画など）については、`docs/design/` および `docs/plans/` を参照してください。
 
-詳細な設計・計画については `docs/` を参照してください。
+## 🛠 技術スタック
 
-| ディレクトリ | ファイル | 内容 |
-|------------|---------|------|
-| `docs/design/` | `001_concept.md` | システム全体像（Worktree, Brain, プロンプト管理） |
-| | `002_v2.md` | 成長メカニズムの初期検討 |
-| | `003_v3_growth_system.md` | 3層記憶モデル・学習サイクル・信頼レベルの詳細設計 |
-| `docs/plans/` | `004_llm_usage_plan.md` | LLM 使用計画 v1 |
-| | `005_llm_usage_plan_v2.md` | LLM 使用計画 v2（Phase A/B/C 設計、エラーハンドリング） |
-| | `006_agile_development_plan.md` | アジャイル開発計画（Sprint 0〜6） |
-| `docs/drafts/` | `phase_a_prompt_draft.md` | Phase A 統合プロンプトのテンプレート |
+* **言語**: TypeScript (ESNext, NodeNext modules)
+* **ビルド**: `tsc`
+* **LLM**: `gemini` CLI（`child_process.execFile` 経由で呼び出し）
+* **依存ライブラリ**: `commander`（CLIルーティング）, `yaml`（YAMLパース）
 
-## 技術スタック
-
-- **言語**: TypeScript (ESNext, NodeNext modules)
-- **ビルド**: `tsc` → `build/` に出力
-- **LLM**: `gemini` CLI（`child_process.execFile` 経由）
-- **依存ライブラリ**: `commander`（CLI）, `yaml`（YAML パース）
-
-## ライセンス
+## 📄 ライセンス
 
 [MIT](LICENSE)
