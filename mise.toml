@@ -17,6 +17,14 @@ run = [
   "node build/cli.js maintenance setup-skill"
 ]
 
+[tasks.install]
+description = "deba コマンドをグローバルにインストールし、他のディレクトリから使えるようにします"
+run = [
+  "mise run build",
+  "npm link",
+  "deba maintenance setup-skill"
+]
+
 [tasks.run]
 description = "Deba を実行します"
 run = "node build/cli.js run {{arg(name='query')}}"
