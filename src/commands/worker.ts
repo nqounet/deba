@@ -2,7 +2,38 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { initQueueDirs, getQueueDirPath, moveTask } from '../utils/queue.js';
 import { executeStep } from '../runner.js';
-import { createWorktree } from '../utils/git.js';
+import { createWorktree, getMainRepoRoot } from '../utils/git.js';
+import { buildSkillSuggestionPrompt } from '../prompt.js';
+import { generateContent } from '../ai.js';
+import { extractAndParseYaml } from '../yamlParser.js';
+
+const PROPOSALS_DIR = path.join(getMainRepoRoot(), 'brain', 'skills', 'proposals');
+
+async function suggestSkillFromSuccess(taskDescription: string, taskResult: string) {
+  console.log(`\n[Worker] 💡 成功体験からスキルを抽出しています...`);
+  
+  try {
+    const prompt = buildSkillSuggestionPrompt(taskDescription, taskResult);
+    const { text } = await generateContent(prompt, 'gemini-2.5-flash');
+    
+    const { parsedObject } = extractAndParseYaml(text);
+    if (parsedObject && parsedObject.skill) {
+      const skill = parsedObject.skill;
+      const filename = `${skill.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.md`;
+      const filePath = path.join(PROPOSALS_DIR, filename);
+      
+      await fs.mkdir(PROPOSALS_DIR, { recursive: true });
+      
+      // Markdown 形式で保存
+      const content = `# Skill Proposal: ${skill.name}\n\n${skill.summary}\n\n## Rule\n${skill.rule}\n\n<!-- metadata\n${JSON.stringify(skill, null, 2)}\n-->`;
+      await fs.writeFile(filePath, content, 'utf-8');
+      
+      console.log(`[Worker] ✨ 新しいスキル候補を提案しました: ${filename}`);
+    }
+  } catch (error: any) {
+    console.warn(`[Worker] スキル抽出に失敗しました（スキップします）: ${error.message}`);
+  }
+}
 
 export async function workerCommand() {
   console.log('Deba Worker 起動中...');
@@ -53,6 +84,9 @@ export async function workerCommand() {
           // doing -> done へ移動
           await moveTask(filename, 'doing', 'done');
           console.log(`[Worker] ✅ Task completed: ${filename}`);
+          
+          // 成功体験からのスキル提案
+          await suggestSkillFromSuccess(taskData.description, result.text);
           
         } catch (error: any) {
           console.error(`[Worker] ❌ Task failed: ${filename} - ${error.message}`);
