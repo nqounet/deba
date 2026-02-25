@@ -4,49 +4,66 @@
 
 ---
 
-# システム構想書: DebaSync v3 - Worktree & Brain Integration
+# システムアーキテクチャ: Deba - Portable Agent & Worktree Integration
 
 ## 1. システム全体像
 
-このシステムは、ユーザーの既存リポジトリから「エージェント専用の作業場（Worktree）」を切り出し、そこでエージェントが自律的に作業を行います。エージェントの思考回路（プロンプト）は外部Markdownファイルとして管理され、ユーザーが容易に調整・改善可能です。
+Deba は、既存の Git リポジトリ内に「エージェント専用の作業領域（Worktree）」を自動構築し、そこで自律的に作業を行う「成長する新人エンジニア」型 AI エージェント CLI です。
+グローバル設定に依存せず、プロジェクトルート内に知識（Brain）と作業領域（Worktrees）を保持する「ポータブル・エージェント」の思想に基づいています。
 
 ## 2. ディレクトリ構造とデータ管理
 
-システムは、**Global Brain（脳・設定）** と **Workspaces（作業場）** の2つの領域を管理します。
+プロジェクトルート直下に以下のディレクトリを自動生成し、状態を管理します。
 
-### 2.1 Global Brain (`~/.deba_config/`)
+### 2.1 Project Brain (`brain/`)
 
-エージェントの知識、設定、プロンプトが集約される場所です。
-
-```text
-~/.deba/
-├── prompts/                  # プロンプトテンプレート（Markdown）
-│   ├── agent1_scribe.md      # 要件定義用プロンプト
-│   ├── agent2_planner.md     # 計画立案用プロンプト
-│   ├── agent2_coder.md       # 実装用プロンプト
-│   └── reflection.md         # 振り返り・学習用プロンプト
-├── brain/                    # 獲得したスキルとプロジェクト知識
-│   ├── skills/               # 汎用スキル（言語別・フレームワーク別）
-│   └── projects/             # プロジェクトごとのインデックス（Ingestion結果）
-│       └── {repo_hash}.json  # リポジトリ構造、主要クラス、依存関係の要約
-└── settings.json             # APIキーやGit設定
-
-```
-
-### 2.2 Managed Worktrees (`~/.deba/worktrees/`)
-
-アプリが管理するエージェント用の作業ディレクトリです。
+エージェントの知識、経験、獲得したスキルが集約される場所です。
 
 ```text
-~/.deba/worktrees/
-└── {project_name}_{timestamp}/  # git worktreeで作成された実体
-    ├── .git                     # (.git file pointing to main repo)
-    ├── .deba/                   # エージェント間通信用
-    │   ├── inbox/               # Agent 1の出力先
-    │   └── ...
-    └── (Source Code)            # チェックアウトされたコード
-
+brain/
+├── episodes/                 # タスクごとの実行記録（成功・失敗のコンテキスト）
+├── skills/                   # 承認済みのスキル（コーディング規約・ベストプラクティス）
+│   ├── proposals/            # 承認待ちのスキル提案
+│   └── *_conventions.md      # プロジェクト別・言語別の規約ドキュメント
+├── growth_log/               # 日々の学びの集約ログ
+└── queue/                    # 非同期実行用のタスクキュー（将来拡張）
 ```
+
+### 2.2 Managed Worktrees (`.worktrees/`)
+
+エージェントが隔離環境で作業するためのディレクトリ群です。`.gitignore` により Git 管理からは除外されます。
+
+```text
+.worktrees/
+└── deba-wt-{task_id}/        # git worktree で一時的に作成される作業実体
+    ├── .git                  # メインリポジトリを指す .git ファイル
+    └── (Source Code)         # 特定のブランチがチェックアウトされたコード
+```
+
+### 2.3 Snapshots (`snapshots/`)
+
+LLM とのやり取り（プロンプト全文、生レスポンス、パース結果、メタ情報）の全ての履歴です。再現性の確保と品質分析に利用します。
+
+## 3. ワークフロー: Git Worktree 隔離
+
+### A. 隔離実行フロー
+
+1. **Worktree作成**:
+   - `git worktree add -b feature/{task_id} .worktrees/deba-wt-{task_id}` を実行。
+   - メインの作業ディレクトリ（ユーザーが VSCode 等で開いている場所）を一切汚さず、独立した場所でエージェントが試行錯誤を行います。
+
+2. **自律作業**:
+   - エージェントは `.worktrees/` 内のコードを修正し、テストを実行し、自己修正を繰り返します。
+
+3. **マージ & クリーンアップ**:
+   - 作業完了後、メインリポジトリ側で `git merge --squash` を行い、変更を取り込みます。
+   - `git worktree remove` により作業ディレクトリを完全に消去します。
+
+### B. 自己成長サイクル
+
+1. **Episode 記録**: タスク完了時に「何をしたか」「何が問題だったか」を `brain/episodes/` に保存。
+2. **Review & Learning**: ユーザーによる `deba review` を通じて「学び」を抽出し、`growth_log` に記録。
+3. **Consolidation**: `maintenance consolidate-skills` コマンドにより、蓄積された学びを整理・統合し、`brain/skills/` の規約をアップデート（リファクタリング）します。
 
 ## 3. プロンプト管理（Markdownテンプレート）
 
