@@ -4,7 +4,8 @@ import { generateContent } from './ai.js';
 import { buildPhaseBPrompt } from './prompt.js';
 import { saveSnapshot } from './snapshot.js';
 import { StepBatch } from './dag.js';
-import { exec, execSync } from 'child_process'; // execSync を追加
+import { exec, execSync } from 'child_process';
+import { loadConfig } from './utils/config.js';
 
 /**
  * 指定したテストコマンド（またはデフォルトの npm test）を実行し、その結果を返す。
@@ -57,11 +58,12 @@ export async function executeStep(step: any, cautions: any[], taskId: string, wo
   }
 
   const prompt = buildPhaseBPrompt(step.description, targetFilesContent, cautions || []);
+  const config = await loadConfig();
 
-  console.log(`Sending execution request to lightweight model (gemini-2.5-flash) for step ${step.id}...`);
+  console.log(`Sending execution request to lightweight model (${config.ai.flash_model}) for step ${step.id}...`);
   
   const systemInstruction = "あなたは優秀なプログラマーです。プロンプトの指示に厳密に従い、変更後の完全なコードのみを出力してください。Markdownのコードブロック記号は不要です。";
-  const { text: rawOutput, meta } = await generateContent(prompt, 'gemini-2.5-flash', systemInstruction);
+  const { text: rawOutput, meta } = await generateContent(prompt, config.ai.flash_model, systemInstruction);
 
   // Markdownのコードブロックが含まれている場合は中身を抽出する
   let text = rawOutput;

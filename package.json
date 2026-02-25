@@ -18,7 +18,7 @@
   "license": "ISC",
   "type": "module",
   "bin": {
-    "deba": "./src/cli.ts"
+    "deba": "./build/cli.js"
   },
   "bugs": {
     "url": "https://github.com/nqounet/deba/issues"
@@ -33,6 +33,7 @@
     "commander": "^14.0.3",
     "remark": "^15.0.1",
     "remark-gfm": "^4.0.1",
+    "smol-toml": "^1.6.0",
     "unist-util-visit": "^5.1.0",
     "yaml": "^2.8.2"
   }

@@ -24,6 +24,10 @@
 git clone https://github.com/nqounet/deba.git
 cd deba
 npm install
+npm run build
+
+# エージェント用スキル定義のインストール
+npm run deba -- maintenance setup-skill
 ```
 
 ## 使い方

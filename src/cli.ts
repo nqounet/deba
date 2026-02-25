@@ -5,7 +5,7 @@ import { validateCommand, executeCommand } from './commands/utils.js';
 import { runCommand, runPlanCommand } from './commands/run.js';
 import { reviewCommand } from './commands/review.js';
 import { workerCommand } from './commands/worker.js';
-import { cleanCommand, skillsCommand, skillsPromoteCommand, promoteLearningsCommand, consolidateSkillsCommand } from './commands/maintenance.js';
+import { cleanCommand, skillsCommand, skillsPromoteCommand, promoteLearningsCommand, consolidateSkillsCommand, setupSkillCommand, setupConfigCommand } from './commands/maintenance.js';
 import { worktreeAddCommand } from './commands/worktree.js';
 
 const program = new Command();
@@ -106,5 +106,15 @@ maintenance
   .command('consolidate-skills')
   .description('重複するスキルや冗長なスキルを統合・整理する')
   .action(consolidateSkillsCommand);
+
+maintenance
+  .command('setup-skill')
+  .description('SKILL.md を ~/.agents/skills/deba/SKILL.md にインストールする')
+  .action(setupSkillCommand);
+
+maintenance
+  .command('setup-config')
+  .description('設定ファイル (~/.deba/config.toml) を初期化する')
+  .action(setupConfigCommand);
 
 program.parse(process.argv);

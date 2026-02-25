@@ -14,6 +14,10 @@ Deba は「成長する新人エンジニア」をコンセプトとした、要
 - テスト: `npm test`
 - 実行: `npm run deba -- run "要望" --file src/xxx.ts`
 
+### 重要なメンテナンス
+- **コマンドの追加/変更**: 新しいコマンドを追加したり仕様を変更した場合は、必ずプロジェクトルートの `SKILL.md` を更新し、`npm run deba -- maintenance setup-skill` を実行して反映させてください。
+- **整合性チェック**: `SKILL.md` の内容と実装の整合性は `test/skill_md.test.ts` で検証されます。機能追加時はこのテストも更新してください。
+
 ## 知識と知見の検索
 
 このプロジェクトに関する詳細な設計（Git Worktree 隔離、TDD ループ等）や実装上の注意点（YAML エスケープ等）は、**`semantic-knowledge-repository`** スキルに蓄積されています。

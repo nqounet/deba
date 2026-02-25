@@ -5,6 +5,7 @@ import { buildPhaseAPrompt } from '../prompt.js';
 import { extractAndParseYaml } from '../yamlParser.js';
 import { validatePhaseA } from '../validator.js';
 import { initQueueDirs, enqueueStep } from '../utils/queue.js';
+import { loadConfig } from '../utils/config.js';
 
 export async function chatCommand(message: string) {
   console.log(`Sending message to LLM...`);
@@ -27,9 +28,10 @@ export async function chatCommand(message: string) {
 export async function planCommand(request: string, options: { file?: string[] }) {
   console.log('Building Phase A prompt...');
   const prompt = await buildPhaseAPrompt(request, options.file);
+  const config = await loadConfig();
 
-  console.log('Sending plan request to LLM (gemini-2.5-pro)...');
-  const { text, meta } = await generateContent(prompt, 'gemini-2.5-pro');
+  console.log(`Sending plan request to LLM (${config.ai.model})...`);
+  const { text, meta } = await generateContent(prompt, config.ai.model);
   
   console.log('Extracting and parsing YAML...');
   let { yamlRaw, parsedObject, error } = extractAndParseYaml(text);
@@ -42,7 +44,7 @@ export async function planCommand(request: string, options: { file?: string[] })
     console.log('Attempting self-healing (retry 1/1)...');
     
     const repairPrompt = `先ほど出力されたYAMLに不備がありました。\nエラー詳細: ${errorDetail}\n\n不足している情報を補完し、validなYAMLブロックのみを再出力してください。特に閉じクォートやインデント、必須フィールドの有無に注意してください。前置きは不要です。`;
-    const { text: repairedText } = await generateContent(repairPrompt, 'gemini-2.5-flash');
+    const { text: repairedText } = await generateContent(repairPrompt, config.ai.flash_model);
     
     const repairResult = extractAndParseYaml(repairedText);
     if (!repairResult.error && repairResult.parsedObject && typeof repairResult.parsedObject === 'object' && validatePhaseA(repairResult.parsedObject).isValid) {

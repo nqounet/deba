@@ -1,11 +1,13 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as readline from 'readline';
+import * as os from 'os';
 import { listSkills as listSkillsInfo, promoteToSkill } from '../skills.js';
 import { cleanWorktrees, getMainRepoRoot, getRepoStorageRoot } from '../utils/git.js';
 import { cleanSnapshots } from '../utils/clean.js';
 import { getPendingLearnings, markAsApproved } from '../growthLog.js';
 import { generateContent } from '../ai.js';
+import { initConfig } from '../utils/config.js';
 
 const PROPOSALS_DIR = path.join(getRepoStorageRoot(), 'brain', 'skills', 'proposals');
 const SKILLS_DIR = path.join(getRepoStorageRoot(), 'brain', 'skills');
@@ -19,6 +21,31 @@ function askQuestion(query: string): Promise<string> {
     rl.close();
     resolve(ans);
   }));
+}
+
+export async function setupSkillCommand() {
+  const sourcePath = path.join(getMainRepoRoot(), 'SKILL.md');
+  const targetDir = path.join(os.homedir(), '.agents', 'skills', 'deba');
+  const targetPath = path.join(targetDir, 'SKILL.md');
+
+  try {
+    await fs.access(sourcePath);
+  } catch {
+    console.error(`❌ エラー: ソースファイル '${sourcePath}' が見つかりません。`);
+    return;
+  }
+
+  try {
+    await fs.mkdir(targetDir, { recursive: true });
+    await fs.copyFile(sourcePath, targetPath);
+    console.log(`✅ SKILL.md をインストールしました: ${targetPath}`);
+  } catch (error) {
+    console.error(`❌ エラー: SKILL.md のインストールに失敗しました:`, error);
+  }
+}
+
+export async function setupConfigCommand() {
+  await initConfig();
 }
 
 export async function cleanCommand(options: { days: string }) {
