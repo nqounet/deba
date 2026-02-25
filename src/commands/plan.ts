@@ -4,6 +4,7 @@ import { saveSnapshot, generateTaskId } from '../snapshot.js';
 import { buildPhaseAPrompt } from '../prompt.js';
 import { extractAndParseYaml } from '../yamlParser.js';
 import { validatePhaseA } from '../validator.js';
+import { initQueueDirs, enqueueStep } from '../utils/queue.js';
 
 export async function chatCommand(message: string) {
   console.log(`Sending message to LLM...`);
@@ -65,6 +66,17 @@ export async function planCommand(request: string, options: { file?: string[] })
   console.log(`\n===== Phase A Output (Parsed) =====`);
   if (parsedObject) {
     console.log(yaml.stringify(parsedObject));
+    
+    // ステップをキューに投入
+    const steps = parsedObject.implementation_plan?.steps || [];
+    if (steps.length > 0) {
+      await initQueueDirs();
+      console.log(`\nEnqueuing ${steps.length} steps to todo queue...`);
+      for (const step of steps) {
+        const filename = await enqueueStep(taskId, step);
+        console.log(`  [Enqueued] ${filename}`);
+      }
+    }
   } else {
     console.error('Parse Error:', error);
   }

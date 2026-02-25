@@ -1,0 +1,66 @@
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { getMainRepoRoot } from './git.js';
+
+/**
+ * キューの状態を表すディレクトリ名の定義
+ */
+export type QueueStatus = 'todo' | 'doing' | 'done' | 'failed';
+
+const QUEUE_ROOT = path.join(getMainRepoRoot(), 'brain', 'queue');
+
+/**
+ * キューに必要なディレクトリ構造を初期化する
+ */
+export async function initQueueDirs(): Promise<void> {
+  const statuses: QueueStatus[] = ['todo', 'doing', 'done', 'failed'];
+  
+  for (const status of statuses) {
+    const dirPath = path.join(QUEUE_ROOT, status);
+    try {
+      await fs.mkdir(dirPath, { recursive: true });
+    } catch (error: any) {
+      console.error(`キューディレクトリの作成に失敗しました: ${dirPath} - ${error.message}`);
+      throw error;
+    }
+  }
+}
+
+/**
+ * 指定したステータスのディレクトリパスを取得する
+ */
+export function getQueueDirPath(status: QueueStatus): string {
+  return path.join(QUEUE_ROOT, status);
+}
+
+/**
+ * タスクファイルをあるステータスから別のステータスへ移動する（アトミックな操作）
+ */
+export async function moveTask(filename: string, from: QueueStatus, to: QueueStatus): Promise<void> {
+  const oldPath = path.join(getQueueDirPath(from), filename);
+  const newPath = path.join(getQueueDirPath(to), filename);
+  
+  try {
+    await fs.rename(oldPath, newPath);
+  } catch (error: any) {
+    throw new Error(`タスクの移動に失敗しました (${from} -> ${to}): ${filename} - ${error.message}`);
+  }
+}
+
+/**
+ * 実行計画のステップを todo キューに投入する
+ */
+export async function enqueueStep(taskId: string, step: any): Promise<string> {
+  const filename = `${taskId}_step_${step.id}.json`;
+  const filePath = path.join(getQueueDirPath('todo'), filename);
+  
+  // ステップ情報に taskId を付与して保存
+  const taskData = {
+    taskId,
+    ...step,
+    enqueuedAt: new Date().toISOString()
+  };
+  
+  await fs.writeFile(filePath, JSON.stringify(taskData, null, 2), 'utf-8');
+  return filename;
+}

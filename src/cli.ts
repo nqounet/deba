@@ -4,6 +4,7 @@ import { chatCommand, planCommand } from './commands/plan.js';
 import { validateCommand, executeCommand } from './commands/utils.js';
 import { runCommand, runPlanCommand } from './commands/run.js';
 import { reviewCommand } from './commands/review.js';
+import { workerCommand } from './commands/worker.js';
 import { cleanCommand, skillsCommand, skillsPromoteCommand, promoteLearningsCommand } from './commands/maintenance.js';
 
 const program = new Command();
@@ -25,6 +26,11 @@ program
   .argument('<request>', '要件定義の元となるユーザーの要望')
   .option('--file <path...>', '入力ファイル (複数指定可)')
   .action(planCommand);
+
+program
+  .command('worker')
+  .description('キューを監視し、タスクを非同期に実行するワーカーを起動する')
+  .action(workerCommand);
 
 program
   .command('validate')
