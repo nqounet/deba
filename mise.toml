@@ -25,6 +25,13 @@ run = [
   "deba maintenance setup-skill"
 ]
 
+[tasks.push]
+description = "バージョンを上げ（patch）、タグを付けてリモートにプッシュします"
+run = [
+  "npm version patch -m \"chore: release v%s\"",
+  "git push origin main --tags"
+]
+
 [tasks.run]
 description = "Deba を実行します"
 run = "node build/cli.js run {{arg(name='query')}}"
