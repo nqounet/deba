@@ -6,6 +6,7 @@ import { runCommand, runPlanCommand } from './commands/run.js';
 import { reviewCommand } from './commands/review.js';
 import { workerCommand } from './commands/worker.js';
 import { cleanCommand, skillsCommand, skillsPromoteCommand, promoteLearningsCommand } from './commands/maintenance.js';
+import { worktreeAddCommand } from './commands/worktree.js';
 
 const program = new Command();
 
@@ -31,6 +32,14 @@ program
   .command('worker')
   .description('キューを監視し、タスクを非同期に実行するワーカーを起動する')
   .action(workerCommand);
+
+program
+  .command('worktree-add')
+  .description('指定したリポジトリとブランチから、deba内部のworktreesディレクトリにGit Worktreeを作成する')
+  .argument('<repo_path>', 'ターゲットリポジトリのパス')
+  .argument('<branch_name>', '起点となるブランチ名')
+  .option('--name <worktree_name>', '作業ツリー名（オプション）')
+  .action(worktreeAddCommand);
 
 program
   .command('validate')
