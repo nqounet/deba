@@ -1,61 +1,71 @@
 ---
 name: deba-agent
-description: "AI agent CLI for requirements definition, implementation planning, code generation, and learning. Use when you need to execute a full development lifecycle (Phase A: Planning, Phase B: Implementation, Phase C: Review) or manage tasks with Deba's memory system."
+description: "AI agent CLI for requirements definition, planning, execution, review, queue processing, worktree operations, and memory maintenance. Use when you need to run Deba workflows or any Deba command, including `deba chat`, `deba plan`, `deba validate`, `deba execute`, `deba run`, `deba run-plan`, `deba review`, `deba worker`, `deba worktree-add`, and `deba maintenance` subcommands."
 ---
 
 # Deba Agent
 
-「成長する新人エンジニア」をコンセプトとした AI エージェント CLI ツール。
-要件定義・実装計画の生成（Phase A）→ コード変更の生成（Phase B）→ フィードバックからの学習（Phase C）を一気通貫で実行します。
+Use Deba to run an end-to-end development lifecycle:
+Phase A (planning), Phase B (implementation), and Phase C (review and learning).
 
-## ワークフロー
+## Prerequisites
 
-1. **要件定義・計画立案 (Phase A)**: `deba plan` で要望から YAML 形式の計画書を作成します。
-2. **実装・実行 (Phase B)**: `deba run` で計画に基づきコード変更やテストを実行します。
-3. **振り返り・学習 (Phase C)**: `deba review` で成果を分析し、エピソード記憶やスキルとして蓄積します。
+- Install dependencies: `npm install`
+- Build before running locally: `npm run build`
+- Install and authenticate an LLM CLI (`gemini` by default; `codex` is also supported via config)
+- Initialize config when needed: `deba maintenance setup-config`
 
-## 主要コマンド
+## Recommended Workflow
 
-### 1. タスクの実行 (`run`)
-要望から計画立案、検証、実装までを自動で行います。
-```bash
-deba run "要望内容"
-```
+1. Create a plan with `deba plan <request>`.
+2. Validate a plan with `deba validate <filepath>` when inspecting external outputs.
+3. Execute with either `deba run <request>`, `deba run-plan <filepath>`, or `deba execute --step <id> --plan <filepath>`.
+4. Review and capture learning with `deba review <task_id>`.
+5. Curate and promote learning via `deba maintenance promote` and related maintenance commands.
 
-### 2. 計画の立案 (`plan`)
-Phase A（要件定義と実装計画の YAML 生成）のみを実行します。
-```bash
-deba plan "要望内容"
-```
+## Command Reference
 
-### 3. 振り返り (`review`)
-完了したタスクを分析し、得られた知見をエピソード記憶やスキルとして保存します。
-```bash
-deba review <task_id>
-```
+### Top-level Commands
 
-### 4. スキル確認 (`skills`)
-これまでに蓄積されたスキル（意味記憶）を一覧表示します。
-```bash
-deba skills
-```
+| Command | Purpose | Important Options |
+| --- | --- | --- |
+| `deba chat <message>` | Send a direct prompt to the configured LLM and store a snapshot. | None |
+| `deba plan <request>` | Run Phase A only: generate and parse a structured implementation plan. | `--file <path...>` to include one or more context files |
+| `deba worker` | Start queue worker to execute queued steps asynchronously. | None |
+| `deba worktree-add <repo_path> <branch_name>` | Create a Git worktree under Deba's internal `.worktrees` directory. | `--name <worktree_name>` to override generated worktree name |
+| `deba validate <filepath>` | Validate Phase A output (schema + dependency DAG) and print execution batches. | None |
+| `deba execute --step <id> --plan <filepath>` | Execute one specific implementation step from a plan file. | `--step <id>`, `--plan <filepath>` are required |
+| `deba run <request>` | Run end-to-end flow: Phase A, validation, and batch execution in isolated worktree. | `--file <path...>` to include one or more context files |
+| `deba run-plan <filepath>` | Load an existing JSON/YAML plan and execute it directly. | None |
+| `deba review <task_id>` | Run Phase C review, capture feedback, and update episodic/learning memory. | `-y`, `--yes` for non-interactive approval flow |
 
-## 設定と構成
+### Maintenance Commands
 
-### 設定ファイル (`~/.deba/config.toml`)
-- `ai.model`: 計画（Phase A）などの高度な推論に使用するモデル。
-- `ai.flash_model`: 実装（Phase B）や修正などの軽量なタスクに使用するモデル。
+| Command | Purpose | Important Options |
+| --- | --- | --- |
+| `deba maintenance clean` | Remove temporary Deba worktrees and old snapshots. | `--days <number>` snapshot retention days (default: `7`) |
+| `deba maintenance skills` | List acquired skills (semantic memory). | None |
+| `deba maintenance skills-promote <rule>` | Promote a provided rule directly into skill memory. | `--project <name>` target project namespace (default: `default`) |
+| `deba maintenance promote` | Interactively review pending proposals/learnings and promote accepted items. | `-y`, `--yes` to auto-approve all items |
+| `deba maintenance consolidate-skills` | Refactor and consolidate stored skill files. | None |
+| `deba maintenance setup-skill` | Install project `SKILL.md` to `~/.agents/skills/deba/SKILL.md`. | None |
+| `deba maintenance setup-config` | Initialize `~/.deba/config.toml` with default settings. | None |
 
-初期設定の作成：
-```bash
-deba maintenance setup-config
-```
+## Configuration
 
-### 記憶構造
-- **エピソード記憶**: 各タスクの実行詳細と結果。
-- **成長ログ**: タスクを通じて得られた具体的な「学び」。
-- **意味記憶 (Skills)**: 承認され、汎用化されたコーディングルールや知識。
+- Config file: `~/.deba/config.toml`
+- Main keys:
+  - `ai.provider` (`gemini` or `codex`)
+  - `ai.model` (default planning model)
+  - `ai.flash_model` (lighter/faster model for supporting tasks)
 
-## 注意事項
-- 内部で `gemini` CLI を使用するため、環境変数 `GOOGLE_API_KEY` の設定が必要です。
-- 実行ログは `snapshots/` に、記憶データは `brain/` に保存されます。
+## Memory Model
+
+- Episodic memory: task-level execution records and reviews
+- Growth log: pending learnings extracted from reflections
+- Semantic memory (skills): approved rules that are reused in future tasks
+
+## Operational Notes
+
+- Prefer local development invocation: `npm run deba -- <command>`
+- Use `deba maintenance setup-skill` after updating this file to refresh installed agent metadata
