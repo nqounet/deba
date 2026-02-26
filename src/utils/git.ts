@@ -115,6 +115,21 @@ export function createWorktree(taskId: string): string {
     try { execSync(`git branch -D ${branchName}`, { stdio: 'ignore' }); } catch {}
 
     execSync(`git worktree add -b ${branchName} ${worktreeDir}`, { stdio: 'inherit' });
+
+    // node_modules をメインリポジトリからシンボリックリンクする
+    const mainRoot = getMainRepoRoot();
+    const mainNodeModules = path.join(mainRoot, 'node_modules');
+    const wtNodeModules = path.join(worktreeDir, 'node_modules');
+    
+    if (fs.existsSync(mainNodeModules)) {
+      console.log(`Linking node_modules from ${mainNodeModules} to ${wtNodeModules}`);
+      // 既存の（空の）ディレクトリがあれば削除
+      if (fs.existsSync(wtNodeModules) && fs.lstatSync(wtNodeModules).isDirectory()) {
+        fs.rmSync(wtNodeModules, { recursive: true, force: true });
+      }
+      fs.symlinkSync(mainNodeModules, wtNodeModules, 'dir');
+    }
+
     return worktreeDir;
   } catch (error: any) {
     throw new Error(`Failed to create git worktree: ${error.message}`);

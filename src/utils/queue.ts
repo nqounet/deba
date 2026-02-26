@@ -64,3 +64,20 @@ export async function enqueueStep(taskId: string, step: any): Promise<string> {
   await fs.writeFile(filePath, JSON.stringify(taskData, null, 2), 'utf-8');
   return filename;
 }
+
+/**
+ * 特定の taskId に関連するすべてのステップを指定したステータスへ移動する
+ */
+export async function moveAllSteps(taskId: string, from: QueueStatus, to: QueueStatus): Promise<void> {
+  const fromDir = getQueueDirPath(from);
+  try {
+    const files = await fs.readdir(fromDir);
+    const taskFiles = files.filter(f => f.startsWith(taskId));
+    
+    for (const file of taskFiles) {
+      await moveTask(file, from, to);
+    }
+  } catch (error: any) {
+    console.warn(`キューの移動中にエラーが発生しました (${from} -> ${to}): ${error.message}`);
+  }
+}

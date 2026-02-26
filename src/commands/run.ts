@@ -9,6 +9,7 @@ import { validateAndBuildBatches } from '../dag.js';
 import { executeBatches } from '../runner.js';
 import { listSkills as listSkillsInfo } from '../skills.js';
 import { createWorktree } from '../utils/git.js';
+import { moveAllSteps } from '../utils/queue.js';
 
 export async function runCommand(request: string, options: { file?: string[] }) {
   const taskId = generateTaskId();
@@ -78,7 +79,13 @@ export async function runCommand(request: string, options: { file?: string[] }) 
   const worktreeDir = createWorktree(taskId);
   console.log(`🚀 Isolated execution in worktree: ${worktreeDir}`);
 
-  await executeBatches(dagResult.batches, cautions, taskId, worktreeDir);
+  try {
+    await executeBatches(dagResult.batches, cautions, taskId, worktreeDir);
+    await moveAllSteps(taskId, 'todo', 'done');
+  } catch (error) {
+    await moveAllSteps(taskId, 'todo', 'failed');
+    throw error;
+  }
 
   console.log(`\n🎉 Task ${taskId} completed successfully in worktree!`);
   console.log(`\n👉 次に、以下のコマンドを実行してレビューを行い、学びを記録してください：`);
@@ -111,7 +118,17 @@ export async function runPlanCommand(filepath: string) {
   const worktreeDir = createWorktree(taskId);
   console.log(`🚀 Isolated execution in worktree: ${worktreeDir}`);
 
-  await executeBatches(dagResult.batches, cautions, taskId, worktreeDir);
+  // スナップショットパスから元の taskId を抽出（キューの移動用）
+  const originalTaskIdMatch = filepath.match(/task_\d+_\d+_[a-f0-9]+/);
+  const originalTaskId = originalTaskIdMatch ? originalTaskIdMatch[0] : taskId;
+
+  try {
+    await executeBatches(dagResult.batches, cautions, taskId, worktreeDir);
+    await moveAllSteps(originalTaskId, 'todo', 'done');
+  } catch (error) {
+    await moveAllSteps(originalTaskId, 'todo', 'failed');
+    throw error;
+  }
 
   console.log(`\n🎉 Task ${taskId} completed successfully in worktree!`);
   console.log(`\n👉 次に、以下のコマンドを実行してレビューを行い、学びを記録してください：`);
