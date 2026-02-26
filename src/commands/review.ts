@@ -23,7 +23,7 @@ function askQuestion(query: string): Promise<string> {
   }));
 }
 
-export async function reviewCommand(taskId: string, options: { yes?: boolean } = {}) {
+export async function reviewCommand(taskId: string, options: { yes?: boolean, approve?: boolean, message?: string } = {}) {
   const snapshotDir = path.join(getRepoStorageRoot(), 'snapshots', taskId);
 
   try {
@@ -59,7 +59,10 @@ export async function reviewCommand(taskId: string, options: { yes?: boolean } =
   let answer = '';
   let isApproved = false;
 
-  if (options.yes) {
+  if (options.approve !== undefined) {
+    isApproved = options.approve;
+    answer = options.message || (isApproved ? 'y' : 'Needs fix');
+  } else if (options.yes) {
     console.log('自動承認しました (--yes)');
     answer = 'y';
     isApproved = true;

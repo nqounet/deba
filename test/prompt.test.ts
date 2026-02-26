@@ -3,6 +3,7 @@ import * as fs from 'fs/promises';
 import {
   buildPhaseAPrompt,
   buildPhaseBPrompt,
+  buildReflectionPrompt,
   buildSkillSuggestionPrompt
 } from '../src/prompt';
 import { loadSkills } from '../src/skills';
@@ -59,6 +60,24 @@ describe('prompt module', () => {
       await expect(buildPhaseAPrompt('test request'))
         .rejects.toThrow('プロンプトテンプレートファイルの読み込みに失敗しました:');
     });
+
+    it('エピソード記録が存在する場合、それらをプロンプトに含めること', async () => {
+      vi.mocked(fs.readFile).mockResolvedValue('Template: {{RELATED_EPISODES}}');
+      vi.mocked(fs.access).mockResolvedValue(undefined); // episodesDirが存在
+      vi.mocked(fs.readdir).mockResolvedValue(['2024-01-01_001.md'] as any);
+      vi.mocked(fs.readFile).mockImplementation(async (p: any) => {
+        if (p.includes('template')) return 'Template: {{RELATED_EPISODES}}';
+        if (p.includes('2024-01-01_001.md')) return 'Episode 1 content';
+        return '';
+      });
+      vi.mocked(loadIngestion).mockResolvedValue('');
+      vi.mocked(loadSkills).mockResolvedValue('');
+      vi.mocked(searchKnowledge).mockResolvedValue([]);
+      vi.mocked(formatKnowledgeForPrompt).mockReturnValue('');
+
+      const result = await buildPhaseAPrompt('request');
+      expect(result).toContain('Episode 1 content');
+    });
   });
 
   describe('buildPhaseBPrompt', () => {
@@ -67,6 +86,16 @@ describe('prompt module', () => {
       expect(result).toContain('Test step');
       expect(result).toContain('File content');
       expect(result).toContain('- [CTX] Do this');
+    });
+  });
+
+  describe('buildReflectionPrompt', () => {
+    it('自己評価および学び抽出用のプロンプトを構築すること', () => {
+      const result = buildReflectionPrompt('Summary', 'Corrections', 'Skills');
+      expect(result).toContain('Summary');
+      expect(result).toContain('Corrections');
+      expect(result).toContain('Skills');
+      expect(result).toContain('reflection:');
     });
   });
 

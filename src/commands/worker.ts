@@ -40,7 +40,7 @@ async function suggestSkillFromSuccess(taskDescription: string, taskResult: stri
   }
 }
 
-export async function workerCommand() {
+export async function workerCommand(options: { once?: boolean } = {}) {
   console.log('Deba Worker 起動中...');
   
   try {
@@ -55,6 +55,7 @@ export async function workerCommand() {
       const taskFiles = files.filter(f => f.endsWith('.json')).sort();
       
       if (taskFiles.length === 0) {
+        if (options.once) break;
         // タスクがなければ少し待機
         await new Promise(resolve => setTimeout(resolve, 3000));
         continue;
@@ -73,13 +74,10 @@ export async function workerCommand() {
           const { taskId } = taskData;
           console.log(`[Worker] Executing step ${taskData.id} for task ${taskId}...`);
           
-          // Worktree の準備（既存の executeBatches のロジックを参考）
-          // タスクごとに専用の隔離環境を作成する
+          // Worktree の準備
           const worktreeDir = createWorktree(taskId);
           
           // ステップの実行
-          // cautions は本来 Phase A 出力に含まれるが、ここでは簡易化のため空配列を渡す
-          // 必要に応じて taskData に含めるように plan.ts を修正することも検討
           const result = await executeStep(taskData, [], taskId, worktreeDir);
           
           if (result.testResult && result.testResult.code !== 0) {
@@ -102,6 +100,8 @@ export async function workerCommand() {
           }
         }
       }
+
+      if (options.once) break;
     }
     
   } catch (error: any) {

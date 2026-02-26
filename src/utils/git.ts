@@ -96,14 +96,14 @@ export function getWorktreePath(taskId: string): string {
  * 指定した taskId に基づいて一時的な Git Worktree を作成する
  */
 export function createWorktree(taskId: string): string {
-  const worktreeDir = getWorktreePath(taskId);
-  const branchName = `feature/${taskId}`;
-
-  console.log(`\n--- Creating Git Worktree for isolation ---`);
-  console.log(`Directory: ${worktreeDir}`);
-  console.log(`Branch: ${branchName}`);
-
   try {
+    const worktreeDir = getWorktreePath(taskId);
+    const branchName = `feature/${taskId}`;
+
+    console.log(`\n--- Creating Git Worktree for isolation ---`);
+    console.log(`Directory: ${worktreeDir}`);
+    console.log(`Branch: ${branchName}`);
+
     // .worktrees ディレクトリを確実に作成
     const worktreesBase = path.dirname(worktreeDir);
     if (!fs.existsSync(worktreesBase)) {
@@ -176,12 +176,12 @@ export function cleanWorktrees(): void {
  * 正道に基づき、Worktree 側でコミットしてからメインにマージする。
  */
 export function mergeWorktree(taskId: string): void {
-  const branchName = `feature/${taskId}`;
-  const worktreeDir = getWorktreePath(taskId);
-
-  console.log(`\n--- Merging changes from Worktree (${taskId}) via Git ---`);
-  
   try {
+    const branchName = `feature/${taskId}`;
+    const worktreeDir = getWorktreePath(taskId);
+
+    console.log(`\n--- Merging changes from Worktree (${taskId}) via Git ---`);
+    
     // 1. Worktree 側で未コミットの変更があればコミットする
     try {
       console.log(`Committing changes in worktree: ${worktreeDir}`);
