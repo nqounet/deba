@@ -23,6 +23,10 @@ Phase A (planning), Phase B (implementation), and Phase C (review and learning).
 4. Review and capture learning with `deba review <task_id>`.
 5. Curate and promote learning via `deba maintenance promote` and related maintenance commands.
 
+### Handling Failures and TDD Workflow
+
+If a task (e.g., `deba run`) fails or halts during the execution phase (Phase B), **DO NOT** immediately fix the code manually and commit. You MUST run `deba review <task_id>` to record the failure. Provide a detailed explanation of what went wrong and how it should be fixed as your review feedback. This ensures Deba learns from the mistake, extracts a reusable skill for future tasks, and maintains its growth cycle. After reviewing, you may proceed to fix the issue.
+
 ## Command Reference
 
 ### Top-level Commands
