@@ -23,8 +23,8 @@ export async function runCommand(request: string, options: { file?: string[] }) 
   console.log(`\n--- Phase A (Plan) ---`);
   const prompt = await buildPhaseAPrompt(request, options.file);
   
-  console.log('Sending plan request to LLM (gemini-2.5-pro)...');
-  const { text, meta } = await generateContent(prompt, 'gemini-2.5-pro');
+  console.log('Sending plan request to LLM...');
+  const { text, meta } = await generateContent(prompt);
   
   console.log('Extracting and parsing YAML...');
   let { yamlRaw, parsedObject, error } = extractAndParseYaml(text);
@@ -37,7 +37,7 @@ export async function runCommand(request: string, options: { file?: string[] }) 
     console.log('Attempting self-healing (retry 1/1)...');
     
     const repairPrompt = `先ほど出力された内容に不備がありました。\nエラー詳細: ${errorDetail}\n\n不足している情報を補完し、validなJSONブロックのみを再出力してください。特に閉じクォートやカンマ、インデント、必須フィールドの有無に注意してください。前置きは不要です。`;
-    const { text: repairedText } = await generateContent(repairPrompt, 'gemini-2.5-pro');
+    const { text: repairedText } = await generateContent(repairPrompt);
     
     const repairResult = extractAndParseYaml(repairedText);
     if (!repairResult.error && repairResult.parsedObject && typeof repairResult.parsedObject === 'object' && validatePhaseA(repairResult.parsedObject).isValid) {

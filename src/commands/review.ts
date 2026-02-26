@@ -10,6 +10,7 @@ import { saveEpisode } from '../episode.js';
 import { appendGrowthLog } from '../growthLog.js';
 import { saveKnowledge, Knowledge } from '../knowledge.js';
 import { getMainRepoRoot, getRepoStorageRoot, getWorktreePath, mergeWorktree, removeWorktree } from '../utils/git.js';
+import { loadConfig } from '../utils/config.js';
 
 function askQuestion(query: string): Promise<string> {
   const rl = readline.createInterface({
@@ -119,10 +120,11 @@ export async function reviewCommand(taskId: string, options: { yes?: boolean } =
     }
 
     const reflectionPrompt = buildReflectionPrompt(episodeSummary, answer.trim(), currentSkills);
-
+    
     console.log('Sending Reflection request to LLM...');
     const systemInstruction = "あなたは自己評価を行う新人エンジニアです。指示に従い、YAML形式のみで出力してください。";
-    const { text: reflectionText, meta } = await generateContent(reflectionPrompt, 'gemini-2.5-flash', systemInstruction);
+    const config = await loadConfig();
+    const { text: reflectionText, meta } = await generateContent(reflectionPrompt, config.ai.flash_model, systemInstruction);
 
     await saveSnapshot(taskId, {
       input: reflectionPrompt,

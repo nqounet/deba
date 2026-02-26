@@ -9,12 +9,17 @@ import { extractAndParseYaml } from '../yamlParser.js';
 
 const PROPOSALS_DIR = path.join(getRepoStorageRoot(), 'brain', 'skills', 'proposals');
 
+import { loadConfig } from '../utils/config.js';
+
+// ... (他のインポートやコード)
+
 async function suggestSkillFromSuccess(taskDescription: string, taskResult: string) {
   console.log(`\n[Worker] 💡 成功体験からスキルを抽出しています...`);
   
   try {
     const prompt = buildSkillSuggestionPrompt(taskDescription, taskResult);
-    const { text } = await generateContent(prompt, 'gemini-2.5-flash');
+    const config = await loadConfig();
+    const { text } = await generateContent(prompt, config.ai.flash_model);
     
     const { parsedObject } = extractAndParseYaml(text);
     if (parsedObject && parsedObject.skill) {
