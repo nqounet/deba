@@ -90,7 +90,11 @@ export async function saveKnowledge(filename: string, knowledge: Knowledge): Pro
     }
   }
 
-  await fs.writeFile(filePath, JSON.stringify(knowledge, null, 2));
+  try {
+    await fs.writeFile(filePath, JSON.stringify(knowledge, null, 2));
+  } catch (error: any) {
+    throw new Error(`知識の保存に失敗しました: ${path.basename(filePath)} - ${error.message}`);
+  }
   return filePath;
 }
 
