@@ -10,11 +10,11 @@ description = "テストを実行します"
 run = "npm test"
 
 [tasks.setup]
-description = "プロジェクトのセットアップ（依存関係インストール、ビルド、スキルのインストール）を実行します"
+description = "プロジェクトのセットアップ（依存関係インストール、ビルド、deba install）を実行します"
 run = [
   "npm install",
   "mise run build",
-  "node build/cli.js maintenance setup-skill"
+  "node build/cli.js install"
 ]
 
 [tasks.install]
@@ -22,7 +22,7 @@ description = "deba コマンドをグローバルにインストールし、他
 run = [
   "mise run build",
   "npm link",
-  "deba maintenance setup-skill"
+  "deba install"
 ]
 
 [tasks.push]

@@ -18,7 +18,10 @@ export async function generateContent(
     : prompt;
 
   let command = 'gemini';
-  let args: string[] = ['-m', selectedModel, '-p', fullPrompt, '-o', 'json'];
+  let args: string[] = ['-p', fullPrompt, '-o', 'json'];
+  if (selectedModel) {
+    args.push('-m', selectedModel);
+  }
 
   if (provider === 'codex') {
     command = 'codex';

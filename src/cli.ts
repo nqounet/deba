@@ -5,7 +5,7 @@ import { validateCommand, executeCommand } from './commands/utils.js';
 import { runCommand, runPlanCommand } from './commands/run.js';
 import { reviewCommand } from './commands/review.js';
 import { workerCommand } from './commands/worker.js';
-import { cleanCommand, skillsCommand, skillsPromoteCommand, promoteLearningsCommand, consolidateSkillsCommand, setupSkillCommand, setupConfigCommand } from './commands/maintenance.js';
+import { cleanCommand, skillsCommand, skillsPromoteCommand, promoteLearningsCommand, consolidateSkillsCommand, setupSkillCommand, setupConfigCommand, installCommand } from './commands/maintenance.js';
 import { worktreeAddCommand } from './commands/worktree.js';
 
 const program = new Command();
@@ -14,6 +14,11 @@ program
   .name('deba')
   .description('Deba - AI Agent for Development')
   .version('0.1.0');
+
+program
+  .command('install')
+  .description('初期セットアップ: 設定ファイルの作成とスキルのインストールを行う')
+  .action(installCommand);
 
 program
   .command('chat')

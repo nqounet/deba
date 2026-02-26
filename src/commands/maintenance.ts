@@ -23,6 +23,13 @@ function askQuestion(query: string): Promise<string> {
   }));
 }
 
+export async function installCommand() {
+  console.log('🚀 Deba のセットアップを開始します...');
+  await setupConfigCommand();
+  await setupSkillCommand();
+  console.log('🎉 セットアップが完了しました。');
+}
+
 export async function setupSkillCommand() {
   const sourcePath = path.join(getMainRepoRoot(), 'SKILL.md');
   const targetDir = path.join(os.homedir(), '.agents', 'skills', 'deba');
