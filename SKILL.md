@@ -27,6 +27,10 @@ Phase A (planning), Phase B (implementation), and Phase C (review and learning).
 
 If a task (e.g., `deba run`) fails or halts during the execution phase (Phase B), **DO NOT** immediately fix the code manually and commit. You MUST run `deba review <task_id>` to record the failure. Provide a detailed explanation of what went wrong and how it should be fixed as your review feedback. This ensures Deba learns from the mistake, extracts a reusable skill for future tasks, and maintains its growth cycle. After reviewing, you may proceed to fix the issue.
 
+**Automating Review and Promotion**
+- When a task is confirmed successful by the user, or when you have provided a clear fix and verified the Reflection results as useful, prefer using the `--yes` (or `-y`) option with `review` and `maintenance promote` commands to streamline the growth cycle.
+- Use `--yes` when you are confident that the learning extracted is accurate and aligns with project standards.
+
 ## Command Reference
 
 ### Top-level Commands
