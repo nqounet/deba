@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+import * as fs from 'fs';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
 import { Command } from 'commander';
 import { chatCommand, planCommand } from './commands/plan.js';
 import { validateCommand, executeCommand } from './commands/utils.js';
@@ -8,12 +11,20 @@ import { workerCommand } from './commands/worker.js';
 import { cleanCommand, skillsCommand, skillsPromoteCommand, promoteLearningsCommand, consolidateSkillsCommand, setupSkillCommand, setupConfigCommand, installCommand } from './commands/maintenance.js';
 import { worktreeAddCommand } from './commands/worktree.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+// ビルド後の build/cli.js から見た場合と、src/cli.ts から直接実行された場合の違いを吸収する
+const pkgPath = fs.existsSync(path.resolve(__dirname, '../package.json'))
+  ? path.resolve(__dirname, '../package.json')
+  : path.resolve(__dirname, '../../package.json');
+const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+
 const program = new Command();
 
 program
   .name('deba')
   .description('Deba - AI Agent for Development')
-  .version('0.1.0');
+  .version(pkg.version);
 
 program
   .command('install')
