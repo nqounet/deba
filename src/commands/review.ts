@@ -23,7 +23,7 @@ function askQuestion(query: string): Promise<string> {
 }
 
 export async function reviewCommand(taskId: string, options: { yes?: boolean } = {}) {
-  const snapshotDir = path.join(getMainRepoRoot(), 'snapshots', taskId);
+  const snapshotDir = path.join(getRepoStorageRoot(), 'snapshots', taskId);
 
   try {
     await fs.access(snapshotDir);

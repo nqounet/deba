@@ -18,7 +18,7 @@ export async function generateContent(
     : prompt;
 
   let command = 'gemini';
-  let args: string[] = ['-p', fullPrompt, '-o', 'json'];
+  let args: string[] = ['-o', 'json'];
   if (selectedModel) {
     args.push('-m', selectedModel);
   }
@@ -41,10 +41,9 @@ export async function generateContent(
     let stdout = '';
     let stderr = '';
 
-    if (provider === 'codex') {
-      child.stdin.write(fullPrompt);
-      child.stdin.end();
-    }
+    // プロンプトを stdin に書き込む
+    child.stdin.write(fullPrompt);
+    child.stdin.end();
 
     child.stdout.on('data', (data) => {
       stdout += data;
