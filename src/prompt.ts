@@ -19,6 +19,12 @@ const EPISODES_DIR = path.join(getRepoStorageRoot(), 'brain', 'episodes');
  */
 async function loadRecentEpisodes(maxCount: number = 5): Promise<string> {
   try {
+    try {
+      await fs.access(EPISODES_DIR);
+    } catch {
+      // ディレクトリが存在しない場合はエラーにせず空の結果を返す
+      return '※記録なし';
+    }
     const files = await fs.readdir(EPISODES_DIR);
     const mdFiles = files.filter(f => f.endsWith('.md')).sort().reverse().slice(0, maxCount);
     if (mdFiles.length === 0) return '※記録なし';

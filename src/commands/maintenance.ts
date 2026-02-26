@@ -27,7 +27,28 @@ export async function installCommand() {
   console.log('🚀 Deba のセットアップを開始します...');
   await setupConfigCommand();
   await setupSkillCommand();
+  await setupDirectoriesCommand();
   console.log('🎉 セットアップが完了しました。');
+}
+
+export async function setupDirectoriesCommand() {
+  const storageRoot = getRepoStorageRoot();
+  const dirs = [
+    path.join(storageRoot, 'brain', 'episodes'),
+    path.join(storageRoot, 'brain', 'skills'),
+    path.join(storageRoot, 'brain', 'skills', 'proposals'),
+    path.join(storageRoot, 'brain', 'growth_log'),
+    path.join(os.homedir(), '.agents', 'knowledges'),
+  ];
+
+  for (const dir of dirs) {
+    try {
+      await fs.mkdir(dir, { recursive: true });
+      console.log(`✅ Directory ensured: ${dir}`);
+    } catch (error: any) {
+      console.warn(`⚠️ Warning: Failed to create directory ${dir}: ${error.message}`);
+    }
+  }
 }
 
 export async function setupSkillCommand() {
