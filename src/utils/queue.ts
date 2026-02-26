@@ -61,7 +61,11 @@ export async function enqueueStep(taskId: string, step: any): Promise<string> {
     enqueuedAt: new Date().toISOString()
   };
   
-  await fs.writeFile(filePath, JSON.stringify(taskData, null, 2), 'utf-8');
+  try {
+    await fs.writeFile(filePath, JSON.stringify(taskData, null, 2), 'utf-8');
+  } catch (error: any) {
+    throw new Error(`タスクのエンキューに失敗しました: ${filename} - ${error.message}`);
+  }
   return filename;
 }
 
