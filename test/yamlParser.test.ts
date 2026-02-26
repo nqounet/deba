@@ -157,16 +157,54 @@ value: 123
     expect(result.parsedObject).toEqual({ key: 'this_is_actually_yaml', value: 123 });
   });
 
-  it('Markdown記号自体をパースしようとせず、中身だけを抽出するべき', () => {
-    // 以前問題になっていた、空のコードブロック記号自体がパース対象になってしまう問題の確認
-    const text = `
-テキスト
-\`\`\`yaml
-\`\`\`
-テキスト
-    `;
-    const result = extractAndParseYaml(text);
-    expect(result.parsedObject).toBeNull();
-    expect(result.yamlRaw).toBe('');
+    it('Markdown記号自体をパースしようとせず、中身だけを抽出するべき', () => {
+      // 以前問題になっていた、空のコードブロック記号自体がパース対象になってしまう問題の確認
+      const text = `
+  テキスト
+  \`\`\`yaml
+  \`\`\`
+  テキスト
+      `;
+      const result = extractAndParseYaml(text);
+      expect(result.parsedObject).toBeNull();
+      expect(result.yamlRaw).toBe('');
+    });
+  
+    it('正しいJSONオブジェクトをパースできるべき', () => {
+      const text = `
+  \`\`\`json
+  {
+    "key": "json_value",
+    "num": 123
+  }
+  \`\`\`
+      `;
+      const result = extractAndParseYaml(text);
+      expect(result.error).toBeUndefined();
+      expect(result.parsedObject).toEqual({ key: 'json_value', num: 123 });
+    });
+  
+    it('JSON配列の場合、オブジェクト形式ではないためエラーを返す', () => {
+      const text = `
+  \`\`\`json
+  [1, 2, 3]
+  \`\`\`
+      `;
+      const result = extractAndParseYaml(text);
+      expect(result.error).toBe('パース結果がオブジェクト形式ではありません。');
+      expect(result.parsedObject).toBeNull();
+    });
+  
+    it('YAML配列の場合、オブジェクト形式ではないためエラーを返す', () => {
+      const text = `
+  \`\`\`yaml
+  - item1
+  - item2
+  \`\`\`
+      `;
+      const result = extractAndParseYaml(text);
+      expect(result.error).toBe('パース結果がオブジェクト形式ではありません。');
+      expect(result.parsedObject).toBeNull();
+    });
   });
-});
+  
