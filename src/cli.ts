@@ -10,6 +10,7 @@ import { reviewCommand } from './commands/review.js';
 import { workerCommand } from './commands/worker.js';
 import { cleanCommand, skillsCommand, skillsPromoteCommand, promoteLearningsCommand, consolidateSkillsCommand, setupSkillCommand, setupConfigCommand, installCommand } from './commands/maintenance.js';
 import { worktreeAddCommand } from './commands/worktree.js';
+import { usageTracker } from './utils/usage.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -133,4 +134,15 @@ maintenance
   .description('設定ファイル (~/.deba/config.toml) を初期化する')
   .action(setupConfigCommand);
 
-program.parse(process.argv);
+(async () => {
+  try {
+    await program.parseAsync(process.argv);
+  } catch (error: any) {
+    console.error(`❌ エラーが発生しました: ${error.message}`);
+  } finally {
+    // LLMを一度でも呼び出していればレポートを表示
+    if (usageTracker.getSession().totalCalls > 0) {
+      console.log(usageTracker.finalize());
+    }
+  }
+})();

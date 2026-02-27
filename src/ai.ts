@@ -116,5 +116,15 @@ export async function generateContent(
     ...cliMeta,
   };
 
+  // Usage ログを記録
+  const { usageTracker } = await import('./utils/usage.js');
+  usageTracker.recordCall({
+    model: selectedModel || 'unknown',
+    provider,
+    duration_ms: endTime - startTime,
+    prompt_tokens: cliMeta.usage?.prompt_tokens || cliMeta.usage?.total_tokens, // metaの内容に依存
+    completion_tokens: cliMeta.usage?.completion_tokens,
+  });
+
   return { text: text.trim(), meta };
 }
