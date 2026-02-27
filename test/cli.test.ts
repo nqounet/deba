@@ -32,7 +32,18 @@ const mockProgram = {
   allowUnknownOption: vi.fn().mockReturnThis(),
   requiredOption: vi.fn().mockReturnThis(),
   parse: vi.fn().mockReturnThis(),
+  parseAsync: vi.fn().mockResolvedValue(undefined),
 };
+
+vi.mock('ora', () => ({
+  default: vi.fn(() => ({
+    start: vi.fn().mockReturnThis(),
+    stop: vi.fn().mockReturnThis(),
+    succeed: vi.fn().mockReturnThis(),
+    fail: vi.fn().mockReturnThis(),
+    text: ''
+  }))
+}));
 
 vi.mock('commander', () => {
   return {

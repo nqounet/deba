@@ -4,7 +4,26 @@ import { spawn } from 'child_process';
 import { loadConfig } from '../src/utils/config.js';
 
 vi.mock('child_process', () => ({
-  spawn: vi.fn()
+  spawn: vi.fn(),
+  execSync: vi.fn((cmd) => {
+    if (cmd === 'git remote -v') {
+      return 'origin\thttps://github.com/nqounet/deba.git (fetch)\norigin\thttps://github.com/nqounet/deba.git (push)';
+    }
+    if (cmd.includes('git rev-parse')) {
+      return '/mock/repo/root';
+    }
+    return '';
+  })
+}));
+
+vi.mock('ora', () => ({
+  default: vi.fn(() => ({
+    start: vi.fn().mockReturnThis(),
+    stop: vi.fn().mockReturnThis(),
+    succeed: vi.fn().mockReturnThis(),
+    fail: vi.fn().mockReturnThis(),
+    text: ''
+  }))
 }));
 
 vi.mock('../src/utils/config.js', () => ({
