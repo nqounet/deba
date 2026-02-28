@@ -14,7 +14,7 @@ description = "deba コマンドをグローバルにインストールし、他
 depends = ["build"]
 run = ["npm link", "deba install"]
 
-[tasks.push]
+[tasks.bump-patch]
 description = "バージョンを上げ（patch）、タグを付けてリモートにプッシュします"
 run = [
   "npm version patch -m \"chore: release v%s\"",

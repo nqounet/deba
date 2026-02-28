@@ -1,25 +1,36 @@
 {
-  "name": "deba",
+  "name": "@nqounet/deba",
   "version": "0.5.1",
   "engines": {
     "node": ">=20.0.0"
   },
   "description": "",
-  "main": "index.js",
+  "main": "build/cli.js",
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
     "build": "./node_modules/.bin/tsc",
-    "deba": "npm run build && node build/cli.js"
+    "deba": "npm run build && node build/cli.js",
+    "prepublishOnly": "npm run build",
+    "prepare": "husky"
   },
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/nqounet/deba.git"
   },
   "keywords": [],
-  "author": "",
+  "author": "nqounet",
   "license": "MIT",
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "build",
+    "src/templates",
+    "LICENSE",
+    "README.md"
+  ],
   "bin": {
     "deba": "./build/cli.js"
   },
@@ -28,8 +39,11 @@
   },
   "homepage": "https://github.com/nqounet/deba#readme",
   "devDependencies": {
+    "@commitlint/cli": "^20.4.2",
+    "@commitlint/config-conventional": "^20.4.2",
     "@types/node": "^25.3.0",
     "@vitest/coverage-v8": "^2.1.9",
+    "husky": "^9.1.7",
     "typescript": "^5.9.3",
     "vitest": "^2.0.5"
   },
