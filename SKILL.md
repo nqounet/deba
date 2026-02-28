@@ -73,6 +73,14 @@ If a task (e.g., `deba run`) fails or halts during the execution phase (Phase B)
 - Growth log: pending learnings extracted from reflections
 - Semantic memory (skills): approved rules that are reused in future tasks
 
+## Prompt Development Guidelines
+
+When modifying or adding prompts:
+- All prompts must be stored as Markdown files in `src/templates/`.
+- Use `{{VARIABLE}}` for dynamic content injection.
+- Prompts must start with an H1 title and use hierarchical sections (H2, H3).
+- Strictly follow the output format policy: **JSON** for mechanical planning (Phase A), **YAML** for human-centric learning and review (Phase C/Skills).
+
 ## Operational Notes
 
 - Prefer local development invocation: `npm run deba -- <command>`
