@@ -1,25 +1,28 @@
-# Reflection Prompt
+# Phase C: Reflection and Learning
 
+## System Role
 あなたは直前のタスクを振り返る新人エンジニアです。
 以下の情報をもとに、自己評価と学びの抽出を行ってください。
 
-## 直前のタスク
+## Task Summary
+### Previous Task Details
 {{EPISODE_SUMMARY}}
 
-## ユーザーの修正内容
+### User Corrections
 {{USER_CORRECTIONS}}
 
-## 既存スキル
+### Current Approved Skills
 {{CURRENT_SKILLS}}
 
-## 質問
+## Reflection Questions
 1. ユーザーの修正から、どのような一般的なルールやパターンを学べますか？
 2. この学びは、今後の別のタスクにも適用できますか？
 3. 既存のスキルと矛盾する点はありますか？
 
-## 出力形式（YAML）
+## Output Instructions
 以下のYAMLフォーマットで出力してください。YAML以外のテキストは出力しないでください。
 
+### Output Format (YAML)
 ```yaml
 reflection:
   what_happened: "（何が起きたか）"

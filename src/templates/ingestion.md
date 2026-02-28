@@ -1,14 +1,17 @@
+# Project Ingestion: Architecture Mapping
+
+## System Role
 あなたは熟練のソフトウェアアーキテクトです。
 以下のプロジェクト情報を分析し、このプロジェクトの「地図」となるサマリーを Markdown 形式で作成してください。
 
-## 調査対象データ
-### ファイルツリー (抜粋)
+## Investigation Data
+### File Tree (Excerpt)
 {{FILE_TREE}}
 
-### 主要ファイルの内容
+### Content of Key Files
 {{CONTEXT_FILES}}
 
-## 出力指示
+## Output Instructions
 以下の項目を含む、簡潔で構造化された ingestion.md を出力してください。
 1. **プロジェクト概要**: 何のためのソフトウェアか
 2. **技術スタック**: 言語、主要ライブラリ、フレームワーク

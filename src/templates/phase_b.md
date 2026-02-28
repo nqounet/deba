@@ -1,20 +1,24 @@
-# 指示
+# Phase B: Task Execution
+
+## Core Instruction
 以下の実装ステップを正確に実行してください。設計判断は不要です。
 
-## 実装ステップ
+## Context Information
+### Target Step
 {{STEP_DESCRIPTION}}
 
-## 対象ファイル
+### Target File Content
 ```
 {{TARGET_FILE_CONTENT}}
 ```
 
-## 注意事項
+### Cautions & Constraints
 {{CAUTIONS}}
 
-## 曖昧性が生じた場合
+## Error Handling
+### Ambiguity Reported
 実装の詳細が不明な場合は、変更を行わずに以下の形式で報告してください:
 AMBIGUITY: （何が不明か）
 
-## 出力
+## Output Instructions
 変更後のコードのみを出力してください。Markdownのコードブロック（```）などの装飾も不要です。純粋なコードファイルの内容全体を出力してください。

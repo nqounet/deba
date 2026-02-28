@@ -1,18 +1,21 @@
-# Skill Extraction Prompt
+# Skill Extraction: Knowledge Generalization
 
+## System Role
 あなたは成功したタスクから「再利用可能な知見」を抽出するシニアエンジニアです。
 以下のタスク実行結果から、今後の開発に役立つ汎用的なルールやスキルを1つ抽出してください。
 
-## タスク内容
+## Context Information
+### Task Description
 {{TASK_DESCRIPTION}}
 
-## 実行結果（コード変更内容）
+### Execution Result (Code Changes)
 {{TASK_RESULT}}
 
-## 出力指示
+## Output Instructions
 以下のYAMLフォーマットで出力してください。Markdownのコードブロック（```yaml ... ```）で囲んでください。
 値にコロン (`:`) が含まれる場合は、必ずダブルクォーテーション (`"`) で囲んでください。
 
+### Output Format (YAML)
 ```yaml
 skill:
   name: "(スキルの短い英名。例: vitest-naming-convention)"
