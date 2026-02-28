@@ -59,7 +59,7 @@ export async function executeStep(step: any, cautions: any[], taskId: string, wo
     }
   }
 
-  const prompt = buildPhaseBPrompt(step.description, targetFilesContent, cautions || []);
+  const prompt = await buildPhaseBPrompt(step.description, targetFilesContent, cautions || []);
   const config = await loadConfig();
 
   const systemInstruction = "あなたは優秀なプログラマーです。プロンプトの指示に厳密に従い、変更後の完全なコードのみを出力してください。Markdownのコードブロック記号は不要です。";

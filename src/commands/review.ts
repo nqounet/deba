@@ -122,7 +122,7 @@ export async function reviewCommand(taskId: string, options: { yes?: boolean, ap
       // ignore
     }
 
-    const reflectionPrompt = buildReflectionPrompt(episodeSummary, answer.trim(), currentSkills);
+    const reflectionPrompt = await buildReflectionPrompt(episodeSummary, answer.trim(), currentSkills);
     
     const systemInstruction = "あなたは自己評価を行う新人エンジニアです。指示に従い、YAML形式のみで出力してください。";
     const config = await loadConfig();

@@ -8,6 +8,7 @@ import { cleanSnapshots } from '../utils/clean.js';
 import { getPendingLearnings, markAsApproved } from '../growthLog.js';
 import { generateContent } from '../ai.js';
 import { initConfig } from '../utils/config.js';
+import { buildMaintenancePrompt } from '../prompt.js';
 
 const PROPOSALS_DIR = path.join(getRepoStorageRoot(), 'brain', 'skills', 'proposals');
 const SKILLS_DIR = path.join(getRepoStorageRoot(), 'brain', 'skills');
@@ -197,10 +198,7 @@ export async function consolidateSkillsCommand() {
     try {
       const originalContent = await fs.readFile(filePath, 'utf-8');
       
-      const prompt = `以下のドキュメントを整形してください。
-生成されたドキュメント本体以外のテキスト（例: 確認の言葉、Markdownのコードブロック記号など）は一切含めないでください。
-
-${originalContent}`;
+      const prompt = await buildMaintenancePrompt(originalContent);
 
       const consolidatedContent = await generateContent(prompt);
       

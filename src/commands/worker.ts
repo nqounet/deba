@@ -17,7 +17,7 @@ async function suggestSkillFromSuccess(taskDescription: string, taskResult: stri
   console.log(`\n[Worker] 💡 成功体験からスキルを抽出しています...`);
   
   try {
-    const prompt = buildSkillSuggestionPrompt(taskDescription, taskResult);
+    const prompt = await buildSkillSuggestionPrompt(taskDescription, taskResult);
     const config = await loadConfig();
     const { text } = await generateContent(prompt, config.ai.flash_model);
     

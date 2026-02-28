@@ -2,7 +2,7 @@ import * as fs from 'fs/promises';
 import yaml from 'yaml';
 import { generateContent } from '../ai.js';
 import { saveSnapshot, generateTaskId } from '../snapshot.js';
-import { buildPhaseAPrompt } from '../prompt.js';
+import { buildPhaseAPrompt, buildRepairPrompt } from '../prompt.js';
 import { extractAndParseYaml } from '../yamlParser.js';
 import { validatePhaseA } from '../validator.js';
 import { validateAndBuildBatches } from '../dag.js';
@@ -35,7 +35,7 @@ export async function runCommand(request: string, options: { file?: string[] }) 
     console.warn(`⚠️ YAML/JSON validation/parse error: ${errorDetail}`);
     console.log('Attempting self-healing (retry 1/1)...');
     
-    const repairPrompt = `先ほど出力された内容に不備がありました。\nエラー詳細: ${errorDetail}\n\n不足している情報を補完し、validなJSONブロックのみを再出力してください。特に閉じクォートやカンマ、インデント、必須フィールドの有無に注意してください。前置きは不要です。`;
+    const repairPrompt = await buildRepairPrompt(errorDetail);
     const { text: repairedText } = await generateContent(repairPrompt);
     
     const repairResult = extractAndParseYaml(repairedText);

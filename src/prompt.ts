@@ -9,10 +9,22 @@ import { loadIngestion } from './ingestion.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// docs/drafts/phase_a_prompt_template.md のパス (debaプロジェクト内の相対パス)
+// テンプレートのパス (debaプロジェクト内の相対パス)
 const DEBA_PROJECT_ROOT = path.resolve(__dirname, '..');
-const PROMPT_TEMPLATE_PATH = path.join(DEBA_PROJECT_ROOT, 'docs', 'drafts', 'phase_a_prompt_template.md');
+const TEMPLATES_DIR = path.join(DEBA_PROJECT_ROOT, 'templates');
 const EPISODES_DIR = path.join(getRepoStorageRoot(), 'brain', 'episodes');
+
+/**
+ * テンプレートファイルを読み込む
+ */
+async function loadTemplate(name: string): Promise<string> {
+  const filePath = path.join(TEMPLATES_DIR, `${name}.md`);
+  try {
+    return await fs.readFile(filePath, 'utf-8');
+  } catch (error: any) {
+    throw new Error(`テンプレートファイルの読み込みに失敗しました: ${filePath} - ${error.message}`);
+  }
+}
 
 /**
  * 直近のエピソード記録を最大N件読み込む
@@ -54,12 +66,7 @@ async function loadRecentEpisodes(maxCount: number = 5): Promise<string> {
  * @returns { prompt, skillCount } プロンプト文字列と注入されたスキル数
  */
 export async function buildPhaseAPrompt(request: string, targetFilePaths: string[] = []): Promise<string> {
-  let template: string;
-  try {
-    template = await fs.readFile(PROMPT_TEMPLATE_PATH, 'utf-8');
-  } catch (error: any) {
-    throw new Error(`プロンプトテンプレートファイルの読み込みに失敗しました: ${PROMPT_TEMPLATE_PATH} - ${error.message}`);
-  }
+  let template = await loadTemplate('phase_a');
 
   template = template.replace(/\{\{USER_REQUEST\}\}/g, request);
   
@@ -115,120 +122,79 @@ export async function buildPhaseAPrompt(request: string, targetFilePaths: string
 /**
  * Phase B (軽量モデル) 向けの指示遂行型プロンプトを構築する
  */
-export function buildPhaseBPrompt(
+export async function buildPhaseBPrompt(
   stepDescription: string,
   targetFileContent: string,
   cautionsFromPhaseA: any[]
-): string {
+): Promise<string> {
+  let template = await loadTemplate('phase_b');
+
   const formattedCautions = cautionsFromPhaseA && cautionsFromPhaseA.length > 0
     ? cautionsFromPhaseA.map((c: any) => `- [${c.context}] ${c.instruction}`).join('\n')
     : '特になし';
 
-  return `# 指示
-以下の実装ステップを正確に実行してください。設計判断は不要です。
+  template = template.replace('{{STEP_DESCRIPTION}}', stepDescription);
+  template = template.replace('{{TARGET_FILE_CONTENT}}', targetFileContent || '（新規ファイルまはた内容なし）');
+  template = template.replace('{{CAUTIONS}}', formattedCautions);
 
-## 実装ステップ
-${stepDescription}
-
-## 対象ファイル
-\`\`\`
-${targetFileContent || '（新規ファイルまはた内容なし）'}
-\`\`\`
-
-## 注意事項
-${formattedCautions}
-
-## 曖昧性が生じた場合
-実装の詳細が不明な場合は、変更を行わずに以下の形式で報告してください:
-AMBIGUITY: （何が不明か）
-
-## 出力
-変更後のコードのみを出力してください。Markdownのコードブロック（\`\`\`）などの装飾も不要です。純粋なコードファイルの内容全体を出力してください。
-`;
+  return template;
 }
 
 /**
  * Phase C (Reflection) 向けプロンプトを構築する
  * 修正ありのタスクに対し、LLMに自己評価と学び候補の抽出を求める
  */
-export function buildReflectionPrompt(
+export async function buildReflectionPrompt(
   episodeSummary: string,
   userCorrections: string,
   currentSkills: string
-): string {
-  return `# Reflection Prompt
+): Promise<string> {
+  let template = await loadTemplate('reflection');
 
-あなたは直前のタスクを振り返る新人エンジニアです。
-以下の情報をもとに、自己評価と学びの抽出を行ってください。
+  template = template.replace('{{EPISODE_SUMMARY}}', episodeSummary);
+  template = template.replace('{{USER_CORRECTIONS}}', userCorrections);
+  template = template.replace('{{CURRENT_SKILLS}}', currentSkills || '（まだスキルの蓄積なし）');
 
-## 直前のタスク
-${episodeSummary}
-
-## ユーザーの修正内容
-${userCorrections}
-
-## 既存スキル
-${currentSkills || '（まだスキルの蓄積なし）'}
-
-## 質問
-1. ユーザーの修正から、どのような一般的なルールやパターンを学べますか？
-2. この学びは、今後の別のタスクにも適用できますか？
-3. 既存のスキルと矛盾する点はありますか？
-
-## 出力形式（YAML）
-以下のYAMLフォーマットで出力してください。YAML以外のテキストは出力しないでください。
-
-\`\`\`yaml
-reflection:
-  what_happened: "（何が起きたか）"
-  why_corrected: "（なぜユーザーが修正したか）"
-  self_assessment: "（自己評価）"
-
-learnings:
-  - summary: "（学びの1文要約）"
-    generalizability: "high | medium | project_specific"
-    related_skills: "new | reinforce | modify:skill_name"
-    proposed_rule: "（意味記憶に昇格する場合のルール文）"
-
-episode_metadata:
-  task_type: "（タスク種別）"
-  complexity: 1
-  success: false
-  correction_severity: "minor | major | rejection"
-\`\`\`
-`;
+  return template;
 }
 
 /**
  * 成功したタスクから汎用的なスキルを抽出するためのプロンプトを構築する
  */
-export function buildSkillSuggestionPrompt(
+export async function buildSkillSuggestionPrompt(
   taskDescription: string,
   taskResult: string
-): string {
-  return `# Skill Extraction Prompt
+): Promise<string> {
+  let template = await loadTemplate('skill_suggestion');
 
-あなたは成功したタスクから「再利用可能な知見」を抽出するシニアエンジニアです。
-以下のタスク実行結果から、今後の開発に役立つ汎用的なルールやスキルを1つ抽出してください。
+  template = template.replace('{{TASK_DESCRIPTION}}', taskDescription);
+  template = template.replace('{{TASK_RESULT}}', taskResult);
 
-## タスク内容
-${taskDescription}
+  return template;
+}
 
-## 実行結果（コード変更内容）
-${taskResult}
+/**
+ * Ingestion用プロンプトを構築する
+ */
+export async function buildIngestionPrompt(fileTree: string, contextFiles: string): Promise<string> {
+  let template = await loadTemplate('ingestion');
+  template = template.replace('{{FILE_TREE}}', fileTree);
+  template = template.replace('{{CONTEXT_FILES}}', contextFiles);
+  return template;
+}
 
-## 出力指示
-以下のYAMLフォーマットで出力してください。Markdownのコードブロック（\`\`\`yaml ... \`\`\`）で囲んでください。
-値にコロン (\`:\`) が含まれる場合は、必ずダブルクォーテーション (\`"\`) で囲んでください。
+/**
+ * メンテナンス（整形）用プロンプトを構築する
+ */
+export async function buildMaintenancePrompt(content: string): Promise<string> {
+  let template = await loadTemplate('maintenance');
+  return template.replace('{{CONTENT}}', content);
+}
 
-\`\`\`yaml
-skill:
-  name: "(スキルの短い英名。例: vitest-naming-convention)"
-  summary: "(スキルの1文説明)"
-  rule: |
-    (具体的なルール内容をMarkdown形式で記述。
-     手順や禁止事項、推奨されるパターンなどを含めること)
-  project: "default"
-\`\`\`
-`;
+/**
+ * 修復用プロンプトを構築する
+ */
+export async function buildRepairPrompt(errorDetail: string): Promise<string> {
+  let template = await loadTemplate('repair');
+  return template.replace('{{ERROR_DETAIL}}', errorDetail);
 }

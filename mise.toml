@@ -1,5 +1,5 @@
 [tools]
-node = "22"
+node = "latest"
 
 [tasks.build]
 description = "TypeScript のビルドを実行します"

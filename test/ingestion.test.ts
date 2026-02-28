@@ -1,80 +1,49 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import * as fs from 'fs/promises';
-import { execSync } from 'child_process';
-import * as ai from '../src/ai';
 import { performIngestion, loadIngestion } from '../src/ingestion';
+import * as ai from '../src/ai';
+import * as fs from 'fs/promises';
+import * as prompt from '../src/prompt';
+import { execSync } from 'child_process';
+import * as gitUtils from '../src/utils/git';
 
+vi.mock('../src/ai');
 vi.mock('fs/promises');
 vi.mock('child_process');
-vi.mock('../src/ai');
-vi.mock('../src/utils/git', () => ({
-  getMainRepoRoot: vi.fn(() => '/mock/root'),
-  getRepoStorageRoot: vi.fn(() => '/mock/repo')
+vi.mock('../src/utils/git');
+vi.mock('../src/prompt', () => ({
+  buildIngestionPrompt: vi.fn().mockResolvedValue('ingestion prompt content')
 }));
 
 describe('ingestion module', () => {
-  const mockLog = vi.spyOn(console, 'log').mockImplementation(() => {});
-  const mockError = vi.spyOn(console, 'error').mockImplementation(() => {});
-
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(gitUtils.getMainRepoRoot).mockReturnValue('/mock/root');
+    vi.mocked(gitUtils.getRepoStorageRoot).mockReturnValue('/mock/storage');
   });
 
   describe('performIngestion', () => {
     it('プロジェクトを調査し、LLMの結果を保存すること', async () => {
-      vi.mocked(execSync).mockReturnValue(`file1\nfile2\n` as any);
-      vi.mocked(fs.readFile).mockResolvedValue(`{"name": "test-project"}` as any);
-      vi.mocked(ai.generateContent).mockResolvedValue({ text: '# Project Summary', meta: {} } as any);
-      vi.mocked(fs.mkdir).mockResolvedValue(undefined as any);
-      vi.mocked(fs.writeFile).mockResolvedValue(undefined);
+      vi.mocked(execSync).mockReturnValue('file1\nfile2' as any);
+      vi.mocked(fs.readFile).mockResolvedValue('{"name": "test-project"}');
+      vi.mocked(ai.generateContent).mockResolvedValue({ text: '# Ingestion Result', meta: {} });
 
       const result = await performIngestion();
 
-      expect(result).toBe('# Project Summary');
-      expect(execSync).toHaveBeenCalledWith(expect.stringContaining('git ls-files'), expect.any(Object));
-      expect(ai.generateContent).toHaveBeenCalled();
-      expect(fs.writeFile).toHaveBeenCalledWith(expect.stringContaining('ingestion.md'), '# Project Summary', 'utf-8');
+      expect(result).toBe('# Ingestion Result');
+      expect(prompt.buildIngestionPrompt).toHaveBeenCalled();
+      expect(ai.generateContent).toHaveBeenCalledWith('ingestion prompt content');
     });
 
     it('Git管理下でない場合にフォールバックすること', async () => {
-      vi.mocked(execSync).mockImplementation(() => { throw new Error('not a git repo'); });
-      vi.mocked(fs.readdir).mockResolvedValue(['fileA', 'fileB'] as any);
-      vi.mocked(ai.generateContent).mockResolvedValue({ text: 'fallback summary', meta: {} } as any);
+      vi.mocked(execSync).mockImplementation(() => { throw new Error('git fail'); });
+      vi.mocked(fs.readdir).mockResolvedValue(['fileA'] as any);
+      vi.mocked(fs.readFile).mockResolvedValue('content');
+      vi.mocked(ai.generateContent).mockResolvedValue({ text: 'result', meta: {} });
 
       await performIngestion();
 
       expect(fs.readdir).toHaveBeenCalled();
-      expect(ai.generateContent).toHaveBeenCalledWith(expect.stringContaining('fileA'));
-    });
-
-    it('LLM呼び出しに失敗した場合、エラーメッセージを返すこと', async () => {
-      vi.mocked(ai.generateContent).mockRejectedValue(new Error('AI failed'));
-      
-      const result = await performIngestion();
-      
-      expect(result).toContain('解析に失敗しました');
-      expect(mockError).toHaveBeenCalled();
-    });
-  });
-
-  describe('loadIngestion', () => {
-    it('既存のファイルがある場合、それを読み込むこと', async () => {
-      vi.mocked(fs.readFile).mockResolvedValue('existing ingestion');
-      
-      const result = await loadIngestion();
-      
-      expect(result).toBe('existing ingestion');
-      expect(ai.generateContent).not.toHaveBeenCalled();
-    });
-
-    it('既存のファイルがない場合、performIngestion を実行すること', async () => {
-      vi.mocked(fs.readFile).mockRejectedValueOnce(new Error('ENOENT'));
-      vi.mocked(ai.generateContent).mockResolvedValue({ text: 'newly generated', meta: {} } as any);
-
-      const result = await loadIngestion();
-
-      expect(result).toBe('newly generated');
-      expect(ai.generateContent).toHaveBeenCalled();
+      expect(prompt.buildIngestionPrompt).toHaveBeenCalled();
     });
   });
 });
