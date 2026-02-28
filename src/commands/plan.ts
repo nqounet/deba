@@ -8,7 +8,6 @@ import { initQueueDirs, enqueueStep } from '../utils/queue.js';
 import { loadConfig } from '../utils/config.js';
 
 export async function chatCommand(message: string) {
-  console.log(`Sending message to LLM...`);
   const { text, meta } = await generateContent(message);
   
   console.log(`\n===== Response =====`);
@@ -30,7 +29,6 @@ export async function planCommand(request: string, options: { file?: string[] })
   const prompt = await buildPhaseAPrompt(request, options.file);
   const config = await loadConfig();
 
-  console.log(`Sending plan request to LLM (${config.ai.model})...`);
   const { text, meta } = await generateContent(prompt, config.ai.model);
   
   console.log('Extracting and parsing YAML...');

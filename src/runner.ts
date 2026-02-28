@@ -6,6 +6,7 @@ import { saveSnapshot } from './snapshot.js';
 import { StepBatch } from './dag.js';
 import { exec, execSync } from 'child_process';
 import { loadConfig } from './utils/config.js';
+import { spinner } from './utils/spinner.js';
 
 /**
  * 指定したテストコマンド（またはデフォルトの npm test）を実行し、その結果を返す。
@@ -15,15 +16,16 @@ import { loadConfig } from './utils/config.js';
  */
 export function executeTests(workingDir?: string, command?: string): Promise<{ stdout: string, stderr: string, code: number | null }> {
   const testCmd = command || 'npm test';
+  spinner.start(`Running test: ${testCmd}...`);
+  
   return new Promise((resolve, reject) => {
-    console.log(`\n--- Running test: ${testCmd} in ${workingDir || 'cwd'} ---`);
     exec(testCmd, { cwd: workingDir || process.cwd() }, (error, stdout, stderr) => {
       if (error) {
-        console.error(`❌ Test failed with exit code ${error.code}: ${testCmd}`);
+        spinner.fail(`Test failed: ${testCmd}`);
         // エラーが発生した場合も、stdoutとstderrは返す
         resolve({ stdout, stderr, code: error.code ?? null });
       } else {
-        console.log(`✅ Test passed: ${testCmd}`);
+        spinner.succeed(`Test passed: ${testCmd}`);
         resolve({ stdout, stderr, code: 0 });
       }
     });
@@ -60,10 +62,8 @@ export async function executeStep(step: any, cautions: any[], taskId: string, wo
   const prompt = buildPhaseBPrompt(step.description, targetFilesContent, cautions || []);
   const config = await loadConfig();
 
-  console.log(`Sending execution request to lightweight model (${config.ai.flash_model}) for step ${step.id}...`);
-  
   const systemInstruction = "あなたは優秀なプログラマーです。プロンプトの指示に厳密に従い、変更後の完全なコードのみを出力してください。Markdownのコードブロック記号は不要です。";
-  const { text: rawOutput, meta } = await generateContent(prompt, config.ai.flash_model, systemInstruction);
+  const { text: rawOutput, meta } = await generateContent(prompt, config.ai.flash_model, systemInstruction, { silent: true });
 
   // Markdownのコードブロックが含まれている場合は中身を抽出する
   let text = rawOutput;
@@ -152,15 +152,19 @@ export async function executeBatches(batches: StepBatch[], cautions: any[], task
   for (let i = 0; i < batches.length; i++) {
     const batch = batches[i];
     const stepIds = batch.steps.map(s => s.id).join(', ');
-    console.log(`\n📦 Executing Batch ${i + 1}/${batches.length} (Steps: [${stepIds}])`);
+    spinner.start(`Executing Batch ${i + 1}/${batches.length} (Steps: [${stepIds}])...`);
 
-    // バッチ内のステップは並列実行
-    const executionPromises = batch.steps.map(step => executeStep(step, cautions, taskId, workingDir));
-    
-    // バッチ内のすべてのステップの実行完了を待機
-    await Promise.all(executionPromises);
-    
-    console.log(`✅ Batch ${i + 1} steps completed.`);
+    try {
+      // バッチ内のステップは並列実行
+      const executionPromises = batch.steps.map(step => executeStep(step, cautions, taskId, workingDir));
+      
+      // バッチ内のすべてのステップの実行完了を待機
+      await Promise.all(executionPromises);
+      spinner.succeed(`Batch ${i + 1} steps completed.`);
+    } catch (error) {
+      spinner.fail(`Batch ${i + 1} execution failed.`);
+      throw error;
+    }
 
     // バッチ全体の完了後に、全体テスト（リグレッションチェック）を実行する
     console.log(`\n[Batch ${i + 1}] Running regression test...`);

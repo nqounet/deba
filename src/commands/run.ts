@@ -23,7 +23,6 @@ export async function runCommand(request: string, options: { file?: string[] }) 
   console.log(`\n--- Phase A (Plan) ---`);
   const prompt = await buildPhaseAPrompt(request, options.file);
   
-  console.log('Sending plan request to LLM...');
   const { text, meta } = await generateContent(prompt);
   
   console.log('Extracting and parsing YAML...');

@@ -1,14 +1,20 @@
 import { spawn } from 'child_process';
 import { loadConfig } from './utils/config.js';
+import { spinner } from './utils/spinner.js';
 
 export async function generateContent(
   prompt: string,
   model?: string,
-  systemInstruction?: string
+  systemInstruction?: string,
+  options: { silent?: boolean } = {}
 ): Promise<{ text: string; meta: any }> {
   const config = await loadConfig();
   const provider = config.ai.provider || 'gemini';
   let selectedModel = model || config.ai.model;
+
+  if (!options.silent) {
+    spinner.start(`Requesting ${provider}${selectedModel ? ` (${selectedModel})` : ''}...`);
+  }
 
   const startTime = Date.now();
 
@@ -54,11 +60,13 @@ export async function generateContent(
 
     child.on('close', (code) => {
       if (code !== 0) {
+        if (!options.silent) spinner.fail(`Request failed with exit code ${code}`);
         reject(
           new Error(`${command} CLI failed with exit code ${code}\nstderr: ${stderr}`)
         );
         return;
       }
+      if (!options.silent) spinner.succeed(`Received response from ${provider}`);
       resolve(stdout);
     });
 

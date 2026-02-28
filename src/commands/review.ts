@@ -124,7 +124,6 @@ export async function reviewCommand(taskId: string, options: { yes?: boolean, ap
 
     const reflectionPrompt = buildReflectionPrompt(episodeSummary, answer.trim(), currentSkills);
     
-    console.log('Sending Reflection request to LLM...');
     const systemInstruction = "あなたは自己評価を行う新人エンジニアです。指示に従い、YAML形式のみで出力してください。";
     const config = await loadConfig();
     const { text: reflectionText, meta } = await generateContent(reflectionPrompt, config.ai.flash_model, systemInstruction);
