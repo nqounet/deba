@@ -5,7 +5,11 @@ import ora, { Ora } from 'ora';
  * シングルトンパターンで実装され、一貫したスピナーの動作を提供します。
  */
 class SpinnerService {
+<<<<<<< HEAD
   private _spinner: Ora;
+=======
+  private spinner: Ora;
+>>>>>>> feature/task_20260227_235545_d8dc4aca
   private static instance: SpinnerService;
 
   /**
@@ -15,7 +19,11 @@ class SpinnerService {
   private constructor() {
     // 初期スピナーインスタンスを作成。テキストは空でも問題ありません。
     // stream を process.stdout に明示的に設定することで、標準出力への描画を保証します。
+<<<<<<< HEAD
     this._spinner = ora({ text: '', stream: process.stdout });
+=======
+    this.spinner = ora({ text: '', stream: process.stdout });
+>>>>>>> feature/task_20260227_235545_d8dc4aca
   }
 
   /**
@@ -36,11 +44,19 @@ class SpinnerService {
    * @returns ora インスタンス
    */
   public start(text: string): Ora {
+<<<<<<< HEAD
     this._spinner.text = text;
     if (!this._spinner.isSpinning) {
       this._spinner.start();
     }
     return this._spinner;
+=======
+    this.spinner.text = text;
+    if (!this.spinner.isSpinning) {
+      this.spinner.start();
+    }
+    return this.spinner;
+>>>>>>> feature/task_20260227_235545_d8dc4aca
   }
 
   /**
@@ -49,10 +65,17 @@ class SpinnerService {
    * @returns ora インスタンス
    */
   public succeed(text?: string): Ora {
+<<<<<<< HEAD
     if (this._spinner.isSpinning) {
       this._spinner.succeed(text);
     }
     return this._spinner;
+=======
+    if (this.spinner.isSpinning) {
+      this.spinner.succeed(text);
+    }
+    return this.spinner;
+>>>>>>> feature/task_20260227_235545_d8dc4aca
   }
 
   /**
@@ -61,10 +84,17 @@ class SpinnerService {
    * @returns ora インスタンス
    */
   public fail(text?: string): Ora {
+<<<<<<< HEAD
     if (this._spinner.isSpinning) {
       this._spinner.fail(text);
     }
     return this._spinner;
+=======
+    if (this.spinner.isSpinning) {
+      this.spinner.fail(text);
+    }
+    return this.spinner;
+>>>>>>> feature/task_20260227_235545_d8dc4aca
   }
 
   /**
@@ -74,8 +104,13 @@ class SpinnerService {
    * @returns ora インスタンス
    */
   public setText(text: string): Ora {
+<<<<<<< HEAD
     this._spinner.text = text;
     return this._spinner;
+=======
+    this.spinner.text = text;
+    return this.spinner;
+>>>>>>> feature/task_20260227_235545_d8dc4aca
   }
 
   /**
@@ -83,10 +118,17 @@ class SpinnerService {
    * @returns ora インスタンス
    */
   public stop(): Ora {
+<<<<<<< HEAD
     if (this._spinner.isSpinning) {
       this._spinner.stop();
     }
     return this._spinner;
+=======
+    if (this.spinner.isSpinning) {
+      this.spinner.stop();
+    }
+    return this.spinner;
+>>>>>>> feature/task_20260227_235545_d8dc4aca
   }
 
   /**
@@ -95,10 +137,17 @@ class SpinnerService {
    * @returns ora インスタンス
    */
   public info(text: string): Ora {
+<<<<<<< HEAD
     if (this._spinner.isSpinning) {
       this._spinner.info(text);
     }
     return this._spinner;
+=======
+    if (this.spinner.isSpinning) {
+      this.spinner.info(text);
+    }
+    return this.spinner;
+>>>>>>> feature/task_20260227_235545_d8dc4aca
   }
 
   /**
@@ -107,10 +156,17 @@ class SpinnerService {
    * @returns ora インスタンス
    */
   public warn(text: string): Ora {
+<<<<<<< HEAD
     if (this._spinner.isSpinning) {
       this._spinner.warn(text);
     }
     return this._spinner;
+=======
+    if (this.spinner.isSpinning) {
+      this.spinner.warn(text);
+    }
+    return this.spinner;
+>>>>>>> feature/task_20260227_235545_d8dc4aca
   }
 
   /**
@@ -119,6 +175,7 @@ class SpinnerService {
    * @returns ora インスタンス
    */
   public stopAndPersist(options?: { symbol?: string; text?: string }): Ora {
+<<<<<<< HEAD
     if (this._spinner.isSpinning) {
       this._spinner.stopAndPersist(options);
     }
@@ -130,6 +187,12 @@ class SpinnerService {
    */
   public get isSpinning(): boolean {
     return this._spinner.isSpinning;
+=======
+    if (this.spinner.isSpinning) {
+      this.spinner.stopAndPersist(options);
+    }
+    return this.spinner;
+>>>>>>> feature/task_20260227_235545_d8dc4aca
   }
 }
 
@@ -138,4 +201,8 @@ class SpinnerService {
  * これをインポートしてスピナー操作を行います。
  * 例: import { spinner } from '../utils/spinner'; spinner.start('Loading...');
  */
+<<<<<<< HEAD
 export const spinner = SpinnerService.getInstance();
+=======
+export const spinner = SpinnerService.getInstance();
+>>>>>>> feature/task_20260227_235545_d8dc4aca
