@@ -11,7 +11,7 @@ const __dirname = path.dirname(__filename);
 
 // テンプレートのパス (debaプロジェクト内の相対パス)
 const DEBA_PROJECT_ROOT = path.resolve(__dirname, '..');
-const TEMPLATES_DIR = path.join(DEBA_PROJECT_ROOT, 'templates');
+const TEMPLATES_DIR = path.join(DEBA_PROJECT_ROOT, 'src', 'templates');
 const EPISODES_DIR = path.join(getRepoStorageRoot(), 'brain', 'episodes');
 
 /**
@@ -169,6 +169,23 @@ export async function buildSkillSuggestionPrompt(
 
   template = template.replace('{{TASK_DESCRIPTION}}', taskDescription);
   template = template.replace('{{TASK_RESULT}}', taskResult);
+
+  return template;
+}
+
+/**
+ * 永続セッションワーカー用プロンプトを構築する
+ */
+export async function buildWorkerEternalPrompt(queueStatus: string): Promise<string> {
+  let template = await loadTemplate('worker_eternal');
+  
+  const ingestionContent = await loadIngestion();
+  template = template.replace(/\{\{PROJECT_SUMMARY\}\}/g, ingestionContent);
+
+  const skills = await loadSkills();
+  template = template.replace(/\{\{SEMANTIC_MEMORY\}\}/g, skills || '※まだ蓄積されたスキルなし');
+
+  template = template.replace('{{QUEUE_STATUS}}', queueStatus);
 
   return template;
 }

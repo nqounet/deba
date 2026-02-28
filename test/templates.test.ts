@@ -42,6 +42,10 @@ const REQUIRED_TEMPLATES = [
   {
     name: 'repair',
     placeholders: ['{{ERROR_DETAIL}}']
+  },
+  {
+    name: 'worker_eternal',
+    placeholders: ['{{QUEUE_STATUS}}', '{{PROJECT_SUMMARY}}', '{{SEMANTIC_MEMORY}}']
   }
 ];
 
