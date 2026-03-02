@@ -155,50 +155,21 @@ async function enqueueRequestAndWait(
   });
 }
 
-export async function directGenerateContent(
-  prompt: string,
-  model?: string,
-  systemInstruction?: string,
+/**
+ * CLI 実行の共通ユーティリティ
+ */
+async function runCliCommand(
+  command: string,
+  args: string[],
+  input: string,
   options: { silent?: boolean } = {}
-): Promise<{ text: string; meta: any }> {
-  const config = await loadConfig();
-  const provider = config.ai.provider || 'gemini';
-  let selectedModel = model || config.ai.model;
-
-  if (!options.silent) {
-    spinner.start(`Requesting ${provider}${selectedModel ? ` (${selectedModel})` : ''}...`);
-  }
-
-  const startTime = Date.now();
-
-  const fullPrompt = systemInstruction
-    ? `${systemInstruction}\n\n---\n\n${prompt}`
-    : prompt;
-
-  let command = 'gemini';
-  let args: string[] = [];
-
-  if (provider === 'gemini') {
-    command = 'gemini';
-    args = ['-o', 'json'];
-  } else if (provider === 'codex') {
-    command = 'codex';
-    args = ['exec', '-', '--json', '--dangerously-bypass-approvals-and-sandbox'];
-  } else if (provider === 'copilot') {
-    command = 'copilot';
-    args = [];
-  }
-
-  if (selectedModel) {
-    args.push('-m', selectedModel);
-  }
-
-  const rawOutput = await new Promise<string>((resolve, reject) => {
+): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
     const child = spawn(command, args);
     let stdout = '';
     let stderr = '';
 
-    child.stdin.write(fullPrompt);
+    child.stdin.write(input);
     child.stdin.end();
 
     child.stdout.on('data', (data) => {
@@ -214,7 +185,6 @@ export async function directGenerateContent(
         reject(new Error(`${command} CLI failed with exit code ${code}\nstderr: ${stderr}`));
         return;
       }
-      if (!options.silent) spinner.succeed(`Received response from ${provider}`);
       resolve(stdout);
     });
 
@@ -222,26 +192,30 @@ export async function directGenerateContent(
       reject(new Error(`${command} CLI execution failed: ${err.message}`));
     });
   });
+}
 
-  let text = '';
-  let cliMeta: any = {};
-
-  if (provider === 'gemini' || provider === 'copilot') {
+/**
+ * デコード処理の共通化
+ */
+const Decoders = {
+  json(rawOutput: string) {
     try {
       const jsonStart = rawOutput.indexOf('{');
       const jsonEnd = rawOutput.lastIndexOf('}');
       if (jsonStart !== -1 && jsonEnd !== -1) {
         const jsonText = rawOutput.substring(jsonStart, jsonEnd + 1);
         const jsonOutput = JSON.parse(jsonText);
-        text = jsonOutput.response || jsonOutput.text || '';
-        cliMeta = jsonOutput;
-      } else {
-        text = rawOutput.trim();
+        return {
+          text: jsonOutput.response || jsonOutput.text || '',
+          meta: jsonOutput
+        };
       }
-    } catch (e) {
-      text = rawOutput.trim();
-    }
-  } else if (provider === 'codex') {
+    } catch {}
+    return { text: rawOutput.trim() };
+  },
+  jsonl(rawOutput: string) {
+    let text = '';
+    const cliMeta: any = { usage: {} };
     try {
       const lines = rawOutput.trim().split('\n');
       for (const line of lines) {
@@ -252,15 +226,107 @@ export async function directGenerateContent(
           cliMeta.usage = json.usage;
         }
       }
-    } catch (e) {
-      text = rawOutput.trim();
-    }
+    } catch {}
+    return { text: text || rawOutput.trim(), meta: cliMeta };
+  }
+};
+
+/**
+ * AI プロバイダーの抽象インターフェース
+ */
+interface AiProviderHandler {
+  getDefaultModel(config: any): string | undefined;
+  getCommandArgs(model?: string): { command: string; args: string[] };
+  parseOutput(rawOutput: string): { text: string; meta?: any };
+}
+
+/**
+ * Gemini プロバイダーの実装
+ */
+const GeminiHandler: AiProviderHandler = {
+  getDefaultModel(config) {
+    return config.ai.model || 'gemini-2.0-flash-exp';
+  },
+  getCommandArgs(model) {
+    const args = ['-o', 'json'];
+    if (model) args.push('-m', model);
+    return { command: 'gemini', args };
+  },
+  parseOutput: Decoders.json
+};
+
+/**
+ * Codex プロバイダーの実装
+ */
+const CodexHandler: AiProviderHandler = {
+  getDefaultModel(config) {
+    return config.ai.model;
+  },
+  getCommandArgs(model) {
+    const args = ['exec', '-', '--json', '--dangerously-bypass-approvals-and-sandbox'];
+    if (model) args.push('-m', model);
+    return { command: 'codex', args };
+  },
+  parseOutput: Decoders.jsonl
+};
+
+/**
+ * Copilot プロバイダーの実装
+ */
+const CopilotHandler: AiProviderHandler = {
+  getDefaultModel(config) {
+    return config.ai.model;
+  },
+  getCommandArgs(model) {
+    const args = [];
+    if (model) args.push('-m', model);
+    return { command: 'copilot', args };
+  },
+  parseOutput: Decoders.json
+};
+
+const PROVIDER_HANDLERS: Record<string, AiProviderHandler> = {
+  gemini: GeminiHandler,
+  codex: CodexHandler,
+  copilot: CopilotHandler
+};
+
+export async function directGenerateContent(
+  prompt: string,
+  model?: string,
+  systemInstruction?: string,
+  options: { silent?: boolean } = {}
+): Promise<{ text: string; meta: any }> {
+  const config = await loadConfig();
+  const providerName = config.ai.provider || 'gemini';
+  const handler = PROVIDER_HANDLERS[providerName];
+
+  if (!handler) {
+    throw new Error(`Unsupported provider: ${providerName}`);
+  }
+
+  const selectedModel = model || handler.getDefaultModel(config);
+
+  if (!options.silent) {
+    spinner.start(`Requesting ${providerName}${selectedModel ? ` (${selectedModel})` : ''}...`);
+  }
+
+  const startTime = Date.now();
+  const fullPrompt = systemInstruction ? `${systemInstruction}\n\n---\n\n${prompt}` : prompt;
+
+  const { command, args } = handler.getCommandArgs(selectedModel);
+  const rawOutput = await runCliCommand(command, args, fullPrompt, options);
+  
+  const { text, meta: cliMeta } = handler.parseOutput(rawOutput);
+  
+  if (!options.silent) {
+    spinner.succeed(`Received response from ${providerName}`);
   }
 
   const endTime = Date.now();
   const meta = {
     timestamp: new Date().toISOString(),
-    provider,
+    provider: providerName,
     model: selectedModel,
     duration_ms: endTime - startTime,
     cli_used: true,
@@ -270,10 +336,10 @@ export async function directGenerateContent(
   const { usageTracker } = await import('./utils/usage.js');
   usageTracker.recordCall({
     model: selectedModel || 'unknown',
-    provider,
+    provider: providerName,
     duration_ms: endTime - startTime,
-    prompt_tokens: cliMeta.usage?.prompt_tokens || cliMeta.usage?.total_tokens,
-    completion_tokens: cliMeta.usage?.completion_tokens,
+    prompt_tokens: cliMeta?.usage?.prompt_tokens || cliMeta?.usage?.total_tokens,
+    completion_tokens: cliMeta?.usage?.completion_tokens,
   });
 
   return { text: text.trim(), meta };
