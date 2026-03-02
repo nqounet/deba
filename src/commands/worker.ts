@@ -8,7 +8,7 @@ import { buildWorkerEternalPrompt, buildSkillSuggestionPrompt } from '../prompt.
 import { startChatSession, generateContent, directGenerateContent } from '../ai.js';
 import { extractAndParseYaml } from '../yamlParser.js';
 import { loadConfig } from '../utils/config.js';
-import { writeWorkerPid, removeWorkerPid, isWorkerRunning } from '../utils/workerProcess.js';
+import { acquireWorkerLock, releaseWorkerLock, releaseWorkerLockSync, isWorkerRunning } from '../utils/workerProcess.js';
 
 const PROPOSALS_DIR = path.join(getRepoStorageRoot(), 'brain', 'skills', 'proposals');
 
@@ -120,24 +120,24 @@ async function getQueueStatus(): Promise<string> {
 }
 
 export async function workerCommand(options: { once?: boolean } = {}) {
-  // すでに起動しているかチェック
-  if (await isWorkerRunning()) {
-    console.error('❌ Worker is already running.');
+  // 自身がWorkerであることを明示
+  process.env.DEBA_IS_WORKER = '1';
+
+  try {
+    await acquireWorkerLock();
+  } catch (error: any) {
+    console.error(`❌ ${error.message}`);
     process.exit(1);
   }
 
-  // 自身がWorkerであることを明示
-  process.env.DEBA_IS_WORKER = '1';
-  await writeWorkerPid();
-
   // 終了時にPIDファイルを削除するハンドラ
   const cleanup = async () => {
-    await removeWorkerPid();
+    await releaseWorkerLock();
     process.exit(0);
   };
   process.on('SIGINT', cleanup);
   process.on('SIGTERM', cleanup);
-  process.on('exit', () => removeWorkerPid());
+  process.on('exit', () => releaseWorkerLockSync());
 
   console.log('🚀 Deba Eternal Worker 起動中...');
   

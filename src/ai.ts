@@ -79,7 +79,9 @@ async function enqueueRequestAndWait(
 ): Promise<{ text: string; meta: any }> {
   await initQueueDirs();
   if (!(await isWorkerRunning())) {
-    throw new Error('Worker is not running. Please start it with `deba worker` first.');
+    throw new Error('Deba Eternal Worker is not running.\n' +
+      'Please start it by running `deba worker` in a separate terminal.\n' +
+      'This worker maintains context sessions and handles asynchronous execution.');
   }
 
   const requestId = crypto.randomUUID();
