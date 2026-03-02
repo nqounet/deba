@@ -22,7 +22,8 @@ vi.mock('../src/prompt');
 vi.mock('../src/utils/config');
 vi.mock('../src/utils/workerProcess', () => ({
   writeWorkerPid: vi.fn().mockResolvedValue(undefined),
-  removeWorkerPid: vi.fn().mockResolvedValue(undefined)
+  removeWorkerPid: vi.fn().mockResolvedValue(undefined),
+  isWorkerRunning: vi.fn().mockResolvedValue(false)
 }));
 
 describe('commands/worker module', () => {

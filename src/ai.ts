@@ -1,7 +1,7 @@
 import { spawn } from 'child_process';
 import { loadConfig } from './utils/config.js';
 import { spinner } from './utils/spinner.js';
-import { startWorkerIfNeeded } from './utils/workerProcess.js';
+import { isWorkerRunning } from './utils/workerProcess.js';
 import { getQueueDirPath, initQueueDirs } from './utils/queue.js';
 import * as crypto from 'crypto';
 import * as fs from 'fs/promises';
@@ -78,7 +78,9 @@ async function enqueueRequestAndWait(
   options: { silent?: boolean } = {}
 ): Promise<{ text: string; meta: any }> {
   await initQueueDirs();
-  await startWorkerIfNeeded(); // ワーカーが起動していなければ起動する
+  if (!(await isWorkerRunning())) {
+    throw new Error('Worker is not running. Please start it with `deba worker` first.');
+  }
 
   const requestId = crypto.randomUUID();
   const requestFilename = `req_${requestId}.json`;
