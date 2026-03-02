@@ -5,13 +5,26 @@
 ![](assets/daba-logo.png)
 
 Deba（Developer's Evolving Brain Agent）は、要望から計画生成・隔離実行・振り返り学習までを行う AI エージェント CLI です。  
-実行は Git Worktree で隔離され、学習データはリポジトリ外の `~/.deba` に保存されます。
+アーキテクチャの刷新により、ファイルベースのキュー通信と常駐ワーカー（Eternal Worker）を組み合わせた、より自律的で文脈を維持できる実行環境へと進化しました。実行は Git Worktree で隔離され、学習データはリポジトリ外の `~/.deba` に保存されます。
 
 ## 特徴
 
-- **隔離実行**: `run` / `run-plan` / `worker` は Git Worktree 上で実行し、作業中ブランチを直接汚しません。
+- **常駐ワーカー（Eternal Worker）**: `deba worker` による履歴管理型の疑似セッション。複数のステップや修正にまたがる文脈を維持しながら、長期的なタスクの自律実行を行います。
+- **ファイルベースキュー通信と自動起動**: ディレクトリへのファイル追加をキューとして利用し、タスク投入時にワーカーが自動で処理を開始（自動起動）します。堅牢で非同期なプロセス連携を実現します。
+- **隔離実行**: `run` / `run-plan` / `worker` でのコード変更やテストは Git Worktree 上で行われ、ユーザーのメインブランチを一切汚しません。
 - **学習ループ**: `review` でエピソード記録と学び抽出、`maintenance promote` でスキル昇格ができます。
 - **知識注入**: 計画生成時に承認済みスキルと過去知見（SKR）が自動でプロンプトに注入されます。
+
+## 新しくなった `worker` の仕組み
+
+Deba の自律性を支えるコアとして、新たに **履歴管理型疑似セッション・ワーカー** アーキテクチャが導入されています。
+
+1. **履歴管理型疑似セッション（Context & State Management）**
+   LLM のステートレスな性質を補うため、「対話履歴」を配列として保持・統合してリクエストを送ることで、永続的なセッションを擬似的に実現しています。これにより「直前に行ったテストのエラー結果を踏まえてコードを修正する」といった、高度な自己修復（Self-healing）が可能になっています。
+2. **ファイルベースの堅牢なキューシステム**
+   DB や複雑なプロセス間通信を使わず、`todo`, `doing`, `done`, `failed` といったディレクトリ間のファイル移動でタスクの状態を管理します。実行プロセスのデッドロックを防ぎ、中断・再開に強い堅牢な設計です。
+3. **イベント駆動の待機と自動起動（Auto-start via `fs.watch`）**
+   キューにタスクがない間、ワーカーは API リクエストを完全に停止し、`fs.watch` を用いて低負荷で待機します。他のコマンドからキューディレクトリにタスクファイルが投入されるとイベントを検知し、即座に LLM の自律ループを自動起動・再開します。
 
 ## 前提条件
 
@@ -42,13 +55,16 @@ npm run deba -- maintenance setup-skill
 （`npm run deba` は毎回 `npm run build` を先に実行します）
 
 ```bash
-# 1) 要望から計画〜実装まで実行
+# 1) 常駐ワーカーを別ターミナル等で起動（待機状態にする）
+npm run deba -- worker
+
+# 2) 要望から計画〜実装までをキューに投入し実行
 npm run deba -- run "ヘッダーをロゴとナビに分割して"
 
-# 2) 完了タスクをレビューして学習
+# 3) 完了タスクをレビューして学習
 npm run deba -- review task_20260226_123456_abcd1234
 
-# 3) 承認待ちの学びをスキル化
+# 4) 承認待ちの学びをスキル化
 npm run deba -- maintenance promote
 ```
 
@@ -60,12 +76,12 @@ npm run deba -- maintenance promote
 | --- | --- | --- |
 | `deba chat <message>` | LLM に直接メッセージを送り、応答を表示・スナップショット保存 | なし |
 | `deba plan <request>` | Phase A（計画生成）のみ実行 | `--file <path...>` |
-| `deba worker` | キュー (`todo`) を監視して非同期実行 | なし |
+| `deba worker` | **キュー (`todo`) を監視し、タスク投入時に自動起動・連続実行する常駐プロセス** | なし |
 | `deba worktree-add <repo_path> <branch_name>` | 指定リポジトリから Deba 管理配下に Worktree を作成 | `--name <worktree_name>` |
 | `deba validate <filepath>` | 計画ファイルのスキーマ + DAG 検証、実行バッチ表示 | なし |
 | `deba execute --step <id> --plan <filepath>` | 計画ファイルから単一ステップを実行 | `--step`, `--plan`（必須） |
-| `deba run <request>` | Phase A → Validate → Phase B を一気通貫実行 | `--file <path...>` |
-| `deba run-plan <filepath>` | 既存計画（JSON/YAML）を読み込み実行 | なし |
+| `deba run <request>` | Phase A → Validate を経て、キューにタスクを投入し一気通貫で実行 | `--file <path...>` |
+| `deba run-plan <filepath>` | 既存計画（JSON/YAML）を読み込みキューに投入して実行 | なし |
 | `deba review <task_id>` | Phase C（レビュー・学び抽出） | `-y, --yes` |
 
 ### `deba maintenance` subcommands
@@ -138,6 +154,8 @@ Deba では、LLM との通信およびデータの保存において、**「主
 
 ## 保存先（実装上の実際）
 
+ファイルベースのキュー構造など、現在のワークフローの中核となる構成です。
+
 ```text
 ~/.deba/
 ├── config.toml
@@ -147,7 +165,11 @@ Deba では、LLM との通信およびデータの保存において、**「主
     └── brain/
         ├── episodes/
         ├── growth_log/
-        ├── queue/{todo,doing,done,failed}/
+        ├── queue/
+        │   ├── todo/      # タスクが追加されると Worker が自動起動
+        │   ├── doing/     # Worker が実行中のタスク
+        │   ├── done/      # 完了済みのタスク
+        │   └── failed/    # 失敗したタスク
         └── skills/
             └── proposals/
 

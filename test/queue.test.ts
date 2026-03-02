@@ -34,14 +34,16 @@ describe('queue utils', () => {
   });
 
   describe('initQueueDirs', () => {
-    it('必要な4つのディレクトリを再帰的に作成すること', async () => {
+    it('必要な6つのディレクトリを再帰的に作成すること', async () => {
       await initQueueDirs();
       
-      expect(fs.mkdir).toHaveBeenCalledTimes(4);
+      expect(fs.mkdir).toHaveBeenCalledTimes(6);
       expect(fs.mkdir).toHaveBeenCalledWith(path.join('/mock/repo/root/brain/queue/todo'), { recursive: true });
       expect(fs.mkdir).toHaveBeenCalledWith(path.join('/mock/repo/root/brain/queue/doing'), { recursive: true });
       expect(fs.mkdir).toHaveBeenCalledWith(path.join('/mock/repo/root/brain/queue/done'), { recursive: true });
       expect(fs.mkdir).toHaveBeenCalledWith(path.join('/mock/repo/root/brain/queue/failed'), { recursive: true });
+      expect(fs.mkdir).toHaveBeenCalledWith(path.join('/mock/repo/root/brain/queue/requests'), { recursive: true });
+      expect(fs.mkdir).toHaveBeenCalledWith(path.join('/mock/repo/root/brain/queue/responses'), { recursive: true });
     });
 
     it('mkdirが失敗した場合はエラーを投げること', async () => {

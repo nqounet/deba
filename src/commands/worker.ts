@@ -5,9 +5,10 @@ import { initQueueDirs, getQueueDirPath, moveTask } from '../utils/queue.js';
 import { executeStep } from '../runner.js';
 import { createWorktree, getRepoStorageRoot } from '../utils/git.js';
 import { buildWorkerEternalPrompt, buildSkillSuggestionPrompt } from '../prompt.js';
-import { startChatSession, generateContent } from '../ai.js';
+import { startChatSession, generateContent, directGenerateContent } from '../ai.js';
 import { extractAndParseYaml } from '../yamlParser.js';
 import { loadConfig } from '../utils/config.js';
+import { writeWorkerPid, removeWorkerPid } from '../utils/workerProcess.js';
 
 const PROPOSALS_DIR = path.join(getRepoStorageRoot(), 'brain', 'skills', 'proposals');
 
@@ -57,6 +58,54 @@ function waitForNextTask(dir: string): Promise<string> {
   });
 }
 
+function startRequestsWatcher() {
+  const requestsDir = getQueueDirPath('requests');
+  const responsesDir = getQueueDirPath('responses');
+
+  const watcher = watch(requestsDir, async (eventType, filename) => {
+    if (eventType === 'rename' && filename && filename.endsWith('.json')) {
+      const reqPath = path.join(requestsDir, filename);
+      try {
+        await new Promise(resolve => setTimeout(resolve, 50)); // ファイル書き込み完了を少し待つ
+        const stat = await fs.stat(reqPath).catch(() => null);
+        if (!stat) return;
+
+        const reqData = JSON.parse(await fs.readFile(reqPath, 'utf-8'));
+        console.log(`\n[Worker] 📥 Received request: ${filename}`);
+
+        let result: any = {};
+        try {
+          const content = await directGenerateContent(
+            reqData.prompt, 
+            reqData.model, 
+            reqData.systemInstruction, 
+            { ...reqData.options, silent: true }
+          );
+          result = { text: content.text, meta: content.meta };
+        } catch (err: any) {
+          result = { error: err.message };
+        }
+
+        const resFilename = filename.replace('req_', 'res_');
+        const resPath = path.join(responsesDir, resFilename);
+        
+        await fs.writeFile(resPath, JSON.stringify({
+          requestId: reqData.id,
+          ...result,
+          completedAt: new Date().toISOString()
+        }, null, 2), 'utf-8');
+
+        console.log(`[Worker] 📤 Replied to request: ${resFilename}`);
+      } catch (error: any) {
+        console.error(`[Worker] ❌ Failed to process request ${filename}: ${error.message}`);
+      }
+    }
+  });
+
+  console.log(`[Worker] 📡 Listening for requests on ${requestsDir}`);
+  return watcher;
+}
+
 /**
  * キューの状態を文字列で取得する
  */
@@ -71,10 +120,25 @@ async function getQueueStatus(): Promise<string> {
 }
 
 export async function workerCommand(options: { once?: boolean } = {}) {
+  // 自身がWorkerであることを明示
+  process.env.DEBA_IS_WORKER = '1';
+  await writeWorkerPid();
+
+  // 終了時にPIDファイルを削除するハンドラ
+  const cleanup = async () => {
+    await removeWorkerPid();
+    process.exit(0);
+  };
+  process.on('SIGINT', cleanup);
+  process.on('SIGTERM', cleanup);
+  process.on('exit', () => removeWorkerPid());
+
   console.log('🚀 Deba Eternal Worker 起動中...');
   
   try {
     await initQueueDirs();
+    const requestsWatcher = startRequestsWatcher();
+
     const todoDir = getQueueDirPath('todo');
     const doingDir = getQueueDirPath('doing');
 

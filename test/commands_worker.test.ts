@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as fs from 'fs/promises';
+import { watch } from 'fs';
 import { workerCommand } from '../src/commands/worker';
 import * as queue from '../src/utils/queue';
 import * as runner from '../src/runner';
@@ -7,6 +8,9 @@ import * as ai from '../src/ai';
 import * as prompt from '../src/prompt';
 
 vi.mock('fs/promises');
+vi.mock('fs', () => ({
+  watch: vi.fn(() => ({ close: vi.fn() }))
+}));
 vi.mock('../src/utils/git', () => ({
   getRepoStorageRoot: vi.fn(() => '/mock/repo'),
   createWorktree: vi.fn(() => '/mock/wt')
@@ -16,6 +20,10 @@ vi.mock('../src/runner');
 vi.mock('../src/ai');
 vi.mock('../src/prompt');
 vi.mock('../src/utils/config');
+vi.mock('../src/utils/workerProcess', () => ({
+  writeWorkerPid: vi.fn().mockResolvedValue(undefined),
+  removeWorkerPid: vi.fn().mockResolvedValue(undefined)
+}));
 
 describe('commands/worker module', () => {
   const mockLog = vi.spyOn(console, 'log').mockImplementation(() => {});

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { generateContent } from '../src/ai.js';
 import { spawn } from 'child_process';
 import { loadConfig } from '../src/utils/config.js';
@@ -33,12 +33,17 @@ vi.mock('../src/utils/config.js', () => ({
 describe('generateContent', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.DEBA_IS_WORKER = '1';
     vi.mocked(loadConfig).mockResolvedValue({
       ai: {
         provider: 'gemini',
         model: 'gemini-test-model'
       }
     });
+  });
+
+  afterEach(() => {
+    delete process.env.DEBA_IS_WORKER;
   });
 
   const createMockProcess = (stdoutData: string, stderrData: string, exitCode: number) => {

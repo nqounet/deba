@@ -9,7 +9,12 @@ import * as gitUtils from '../src/utils/git';
 vi.mock('../src/ai');
 vi.mock('fs/promises');
 vi.mock('child_process');
-vi.mock('../src/utils/git');
+vi.mock('../src/utils/git', () => ({
+  getMainRepoRoot: vi.fn(() => '/mock/root'),
+  getRepoStorageRoot: vi.fn(() => '/mock/storage'),
+  getBranchName: vi.fn(),
+  getCommitHash: vi.fn()
+}));
 vi.mock('../src/prompt', () => ({
   buildIngestionPrompt: vi.fn().mockResolvedValue('ingestion prompt content')
 }));

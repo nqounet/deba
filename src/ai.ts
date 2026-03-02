@@ -1,6 +1,12 @@
 import { spawn } from 'child_process';
 import { loadConfig } from './utils/config.js';
 import { spinner } from './utils/spinner.js';
+import { startWorkerIfNeeded } from './utils/workerProcess.js';
+import { getQueueDirPath, initQueueDirs } from './utils/queue.js';
+import * as crypto from 'crypto';
+import * as fs from 'fs/promises';
+import { watch } from 'fs';
+import * as path from 'path';
 
 export class ChatSession {
   private history: { role: string; content: string }[] = [];
@@ -23,7 +29,8 @@ export class ChatSession {
       .map(h => `${h.role.toUpperCase()}: ${h.content}`)
       .join('\n\n---\n\n');
 
-    const { text, meta } = await generateContent(
+    // ChatSession はワーカー内で動くため、直接生成関数を呼ぶ
+    const { text, meta } = await directGenerateContent(
       combinedPrompt,
       this.model,
       this.systemInstruction,
@@ -52,6 +59,99 @@ export async function startChatSession(model?: string, systemInstruction?: strin
 }
 
 export async function generateContent(
+  prompt: string,
+  model?: string,
+  systemInstruction?: string,
+  options: { silent?: boolean } = {}
+): Promise<{ text: string; meta: any }> {
+  // ワーカープロセス以外からの呼び出しは、キュー経由でワーカーに依頼する
+  if (process.env.DEBA_IS_WORKER !== '1') {
+    return await enqueueRequestAndWait(prompt, model, systemInstruction, options);
+  }
+  return await directGenerateContent(prompt, model, systemInstruction, options);
+}
+
+async function enqueueRequestAndWait(
+  prompt: string,
+  model?: string,
+  systemInstruction?: string,
+  options: { silent?: boolean } = {}
+): Promise<{ text: string; meta: any }> {
+  await initQueueDirs();
+  await startWorkerIfNeeded(); // ワーカーが起動していなければ起動する
+
+  const requestId = crypto.randomUUID();
+  const requestFilename = `req_${requestId}.json`;
+  const responseFilename = `res_${requestId}.json`;
+
+  const requestPath = path.join(getQueueDirPath('requests'), requestFilename);
+  const responseDir = getQueueDirPath('responses');
+  const responsePath = path.join(responseDir, responseFilename);
+
+  const requestData = {
+    id: requestId,
+    type: 'generateContent',
+    prompt,
+    model,
+    systemInstruction,
+    options,
+    createdAt: new Date().toISOString()
+  };
+
+  if (!options.silent) {
+    spinner.start(`Waiting for worker... (reqId: ${requestId.substring(0, 8)})`);
+  }
+
+  // ワーカーへリクエストを書き込む
+  await fs.writeFile(requestPath, JSON.stringify(requestData, null, 2), 'utf-8');
+
+  // レスポンスファイルが生成されるのを待機
+  return new Promise((resolve, reject) => {
+    let isResolved = false;
+
+    // TODO: 定期的なタイムアウト処理を入れる場合はここで設定
+    const watcher = watch(responseDir, async (eventType, filename) => {
+      if (filename === responseFilename && !isResolved) {
+        isResolved = true;
+        watcher.close();
+        try {
+          const respData = JSON.parse(await fs.readFile(responsePath, 'utf-8'));
+          if (respData.error) {
+            if (!options.silent) spinner.fail(`Worker Error: ${respData.error}`);
+            reject(new Error(respData.error));
+          } else {
+            if (!options.silent) spinner.succeed(`Received response from worker.`);
+            resolve({ text: respData.text, meta: respData.meta });
+          }
+        } catch (err: any) {
+          reject(new Error(`Failed to parse worker response: ${err.message}`));
+        }
+      }
+    });
+
+    // watch 開始前に既にファイルが存在していた場合 (ワーカーの処理が早かった場合)
+    fs.access(responsePath).then(async () => {
+       if (!isResolved) {
+         isResolved = true;
+         watcher.close();
+         try {
+           const respData = JSON.parse(await fs.readFile(responsePath, 'utf-8'));
+           if (respData.error) {
+             if (!options.silent) spinner.fail(`Worker Error: ${respData.error}`);
+             reject(new Error(respData.error));
+           } else {
+             if (!options.silent) spinner.succeed(`Received response from worker.`);
+             resolve({ text: respData.text, meta: respData.meta });
+           }
+         } catch (err: any) {
+           reject(new Error(`Failed to parse worker response: ${err.message}`));
+         }
+       }
+    }).catch(() => { /* not exists yet, watch will handle it */ });
+  });
+}
+
+export async function directGenerateContent(
   prompt: string,
   model?: string,
   systemInstruction?: string,

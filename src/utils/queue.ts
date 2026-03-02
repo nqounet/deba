@@ -5,7 +5,7 @@ import { getRepoStorageRoot } from './git.js';
 /**
  * キューの状態を表すディレクトリ名の定義
  */
-export type QueueStatus = 'todo' | 'doing' | 'done' | 'failed';
+export type QueueStatus = 'todo' | 'doing' | 'done' | 'failed' | 'requests' | 'responses';
 
 const QUEUE_ROOT = path.join(getRepoStorageRoot(), 'brain', 'queue');
 
@@ -13,7 +13,7 @@ const QUEUE_ROOT = path.join(getRepoStorageRoot(), 'brain', 'queue');
  * キューに必要なディレクトリ構造を初期化する
  */
 export async function initQueueDirs(): Promise<void> {
-  const statuses: QueueStatus[] = ['todo', 'doing', 'done', 'failed'];
+  const statuses: QueueStatus[] = ['todo', 'doing', 'done', 'failed', 'requests', 'responses'];
   
   for (const status of statuses) {
     const dirPath = path.join(QUEUE_ROOT, status);
