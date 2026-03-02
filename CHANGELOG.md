@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.3] - 2026-02-28
 ### Changed
 - Unify project license to MIT across package.json and documentation.
+## [0.6.1] - 2026-03-02
+### Fixed
+- Improved error handling and user-friendly messages when running outside of a git repository.
+
 ## [0.6.0] - 2026-03-02
 ### Added
 - Introducing Eternal Worker and File-based Queue communication for robust asynchronous task execution.
