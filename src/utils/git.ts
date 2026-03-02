@@ -8,7 +8,10 @@ import os from 'os';
  */
 export function getRemoteOriginUrl(): string {
   try {
-    const output = execSync('git remote -v', { encoding: 'utf8' });
+    const output = execSync('git remote -v', { 
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'] // stderr を隠す
+    });
     const lines = output.split('\n');
     for (const line of lines) {
       if (line.startsWith('origin') && line.includes('(fetch)')) {
@@ -18,7 +21,7 @@ export function getRemoteOriginUrl(): string {
     }
     throw new Error('origin remote not found');
   } catch (error: any) {
-    throw new Error(`Git origin remote is required to determine storage path. (Error: ${error.message})`);
+    throw new Error('NOT_A_GIT_REPOSITORY');
   }
 }
 
@@ -27,23 +30,32 @@ export function getRemoteOriginUrl(): string {
  * 例: ssh://git@github.com/nqounet/deba.git -> ~/.deba/repos/github.com/nqounet/deba/
  */
 export function getRepoStorageRoot(): string {
-  const url = getRemoteOriginUrl();
-  
-  // 1. プロトコル、ユーザー名、末尾の .git を削除し、: を / に変換
-  const cleanPath = url
-    .replace(/^.*:\/\//, '')      // ssh://, https:// 等を削除
-    .replace(/^.*@/, '')          // git@ 等を削除
-    .replace(/\.git$/, '')         // 末尾の .git を削除
-    .replace(/:/g, '/');           // : を / に変換 (github.com:user/repo 対応)
+  try {
+    const url = getRemoteOriginUrl();
+    
+    // 1. プロトコル、ユーザー名、末尾の .git を削除し、: を / に変換
+    const cleanPath = url
+      .replace(/^.*:\/\//, '')      // ssh://, https:// 等を削除
+      .replace(/^.*@/, '')          // git@ 等を削除
+      .replace(/\.git$/, '')         // 末尾の .git を削除
+      .replace(/:/g, '/');           // : を / に変換 (github.com:user/repo 対応)
 
-  const storageRoot = path.join(os.homedir(), '.deba', 'repos', cleanPath);
-  
-  // ディレクトリが存在しない場合は作成
-  if (!fs.existsSync(storageRoot)) {
-    fs.mkdirSync(storageRoot, { recursive: true });
+    const storageRoot = path.join(os.homedir(), '.deba', 'repos', cleanPath);
+    
+    // ディレクトリが存在しない場合は作成
+    if (!fs.existsSync(storageRoot)) {
+      fs.mkdirSync(storageRoot, { recursive: true });
+    }
+    
+    return storageRoot;
+  } catch (error: any) {
+    if (error.message === 'NOT_A_GIT_REPOSITORY') {
+      console.error('❌ エラー: Deba は Git リポジトリ内（かつ remote "origin" が設定済み）で実行する必要があります。');
+    } else {
+      console.error(`❌ エラー: ストレージパスの特定に失敗しました: ${error.message}`);
+    }
+    process.exit(1);
   }
-  
-  return storageRoot;
 }
 
 /**

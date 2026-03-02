@@ -7,16 +7,19 @@ import { getRepoStorageRoot } from './git.js';
  */
 export type QueueStatus = 'todo' | 'doing' | 'done' | 'failed' | 'requests' | 'responses';
 
-const QUEUE_ROOT = path.join(getRepoStorageRoot(), 'brain', 'queue');
+function getQueueRoot(): string {
+  return path.join(getRepoStorageRoot(), 'brain', 'queue');
+}
 
 /**
  * キューに必要なディレクトリ構造を初期化する
  */
 export async function initQueueDirs(): Promise<void> {
   const statuses: QueueStatus[] = ['todo', 'doing', 'done', 'failed', 'requests', 'responses'];
+  const queueRoot = getQueueRoot();
   
   for (const status of statuses) {
-    const dirPath = path.join(QUEUE_ROOT, status);
+    const dirPath = path.join(queueRoot, status);
     try {
       await fs.mkdir(dirPath, { recursive: true });
     } catch (error: any) {
@@ -30,7 +33,7 @@ export async function initQueueDirs(): Promise<void> {
  * 指定したステータスのディレクトリパスを取得する
  */
 export function getQueueDirPath(status: QueueStatus): string {
-  return path.join(QUEUE_ROOT, status);
+  return path.join(getQueueRoot(), status);
 }
 
 /**

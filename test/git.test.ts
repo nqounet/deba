@@ -34,7 +34,10 @@ origin	ssh://git@github.com/nqounet/deba.git (push)
 
       const url = getRemoteOriginUrl();
       expect(url).toBe('ssh://git@github.com/nqounet/deba.git');
-      expect(execSync).toHaveBeenCalledWith('git remote -v', { encoding: 'utf8' });
+      expect(execSync).toHaveBeenCalledWith('git remote -v', { 
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore']
+      });
     });
 
     it('HTTPS URL の場合も正しく取得できること', () => {
@@ -49,14 +52,14 @@ origin	ssh://git@github.com/nqounet/deba.git (push)
     it('origin が見つからない場合にエラーを投げること', () => {
       vi.mocked(execSync).mockReturnValue(`upstream	ssh://... (fetch)
 ` as any);
-      expect(() => getRemoteOriginUrl()).toThrow('origin remote not found');
+      expect(() => getRemoteOriginUrl()).toThrow('NOT_A_GIT_REPOSITORY');
     });
 
     it('execSync が失敗した場合にエラーを投げること', () => {
       vi.mocked(execSync).mockImplementation(() => {
         throw new Error('command failed');
       });
-      expect(() => getRemoteOriginUrl()).toThrow(/Git origin remote is required/);
+      expect(() => getRemoteOriginUrl()).toThrow('NOT_A_GIT_REPOSITORY');
     });
   });
 
