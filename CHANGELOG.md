@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.3] - 2026-02-28
 ### Changed
 - Unify project license to MIT across package.json and documentation.
+## [0.6.3] - 2026-03-03
+### Added
+- Enforce singleton behavior for worker with PID-based locking.
+- Improve error messages for missing worker or duplicate instances.
+### Changed
+- Disable automatic background worker startup in favor of manual `deba worker` execution.
+- Refactor internal worker lifecycle management into formalized lock-based utilities.
+
 ## [0.6.2] - 2026-03-02
 ### Fixed
 - Ensure all git error handling improvements are included in the release.
