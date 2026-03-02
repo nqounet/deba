@@ -5,7 +5,7 @@ import { parse, stringify } from 'smol-toml';
 
 export interface DebaConfig {
   ai: {
-    provider?: 'gemini' | 'codex';
+    provider?: 'gemini' | 'codex' | 'copilot';
     model?: string;
     flash_model?: string;
   };

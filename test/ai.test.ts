@@ -147,4 +147,19 @@ describe('generateContent', () => {
 
     expect(result.text).toBe('This is just raw text response without JSON format');
   });
+
+  it('Copilot CLIが指定された場合、正しい引数で呼び出し、テキストを返すこと', async () => {
+    vi.mocked(loadConfig).mockResolvedValue({
+      ai: { provider: 'copilot', model: 'copilot-model' }
+    });
+
+    const mockProcess = createMockProcess('Copilot Response', '', 0);
+    vi.mocked(spawn).mockReturnValue(mockProcess as any);
+
+    const result = await generateContent('Test prompt');
+
+    expect(spawn).toHaveBeenCalledWith('copilot', ['-m', 'copilot-model']);
+    expect(result.text).toBe('Copilot Response');
+    expect(result.meta.provider).toBe('copilot');
+  });
 });

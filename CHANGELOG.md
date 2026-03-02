@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.3] - 2026-02-28
 ### Changed
 - Unify project license to MIT across package.json and documentation.
+## [0.6.4] - 2026-03-03
+### Added
+- Support for `copilot` CLI as an AI provider.
+- Improved flexible parsing for AI response outputs.
+
 ## [0.6.3] - 2026-03-03
 ### Added
 - Enforce singleton behavior for worker with PID-based locking.

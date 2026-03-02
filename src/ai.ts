@@ -176,17 +176,21 @@ export async function directGenerateContent(
     : prompt;
 
   let command = 'gemini';
-  let args: string[] = ['-o', 'json'];
-  if (selectedModel) {
-    args.push('-m', selectedModel);
-  }
+  let args: string[] = [];
 
-  if (provider === 'codex') {
+  if (provider === 'gemini') {
+    command = 'gemini';
+    args = ['-o', 'json'];
+  } else if (provider === 'codex') {
     command = 'codex';
     args = ['exec', '-', '--json', '--dangerously-bypass-approvals-and-sandbox'];
-    if (selectedModel) {
-      args.push('-m', selectedModel);
-    }
+  } else if (provider === 'copilot') {
+    command = 'copilot';
+    args = [];
+  }
+
+  if (selectedModel) {
+    args.push('-m', selectedModel);
   }
 
   const rawOutput = await new Promise<string>((resolve, reject) => {
@@ -222,7 +226,7 @@ export async function directGenerateContent(
   let text = '';
   let cliMeta: any = {};
 
-  if (provider === 'gemini') {
+  if (provider === 'gemini' || provider === 'copilot') {
     try {
       const jsonStart = rawOutput.indexOf('{');
       const jsonEnd = rawOutput.lastIndexOf('}');
