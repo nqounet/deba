@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
+import crypto from 'crypto';
 import yaml from 'yaml';
 import { getRepoStorageRoot } from './utils/git.js';
 
@@ -35,8 +36,6 @@ export async function saveSnapshot(taskId: string, data: SnapshotData, prefix?: 
 
   return snapshotDir;
 }
-
-import crypto from 'crypto';
 
 // 精度の高い task_id ジェネレータ
 export function generateTaskId(): string {
