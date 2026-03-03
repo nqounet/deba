@@ -4,7 +4,7 @@ import { generateContent } from './ai.js';
 import { buildPhaseBPrompt } from './prompt.js';
 import { saveSnapshot } from './snapshot.js';
 import { StepBatch } from './dag.js';
-import { exec, execSync } from 'child_process';
+import { exec, execFileSync } from 'child_process';
 import { loadConfig } from './utils/config.js';
 import { spinner } from './utils/spinner.js';
 
@@ -109,7 +109,7 @@ export async function executeStep(step: any, cautions: any[], taskId: string, wo
 
       // Git リポジトリ内であれば git add を実行する
       try {
-        execSync(`git add ${targetFile}`, { cwd: baseDir });
+        execFileSync('git', ['add', '--', targetFile], { cwd: baseDir });
       } catch {
         // Git 管理下でない場合は無視
       }
@@ -170,20 +170,14 @@ export async function executeBatches(batches: StepBatch[], cautions: any[], task
     console.log(`\n[Batch ${i + 1}] Running regression test...`);
     
     // package.json がある場合のみ npm test を実行する
-    let testCmd = 'npm test';
-    let shouldRunDefaultTest = true;
     try {
       await fs.access(path.join(workingDir || process.cwd(), 'package.json'));
     } catch {
-      shouldRunDefaultTest = false;
-    }
-
-    if (!shouldRunDefaultTest) {
       console.log('💡 No package.json found. Skipping default npm test.');
       continue; // 次のバッチへ
     }
 
-    let testResult = await executeTests(workingDir, testCmd);
+    let testResult = await executeTests(workingDir, 'npm test');
 
     if (testResult.code !== 0) {
       console.log(`\n❌ Batch ${i + 1} regression test failed. Attempting batch-level repair...`);
