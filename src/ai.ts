@@ -8,6 +8,8 @@ import * as fs from 'fs/promises';
 import { watch } from 'fs';
 import * as path from 'path';
 
+const MAX_HISTORY_ENTRIES = 40;
+
 export class ChatSession {
   private history: { role: string; content: string }[] = [];
   private model: string;
@@ -22,8 +24,20 @@ export class ChatSession {
     console.log(`[ChatSession] Session started with model: ${this.model}`);
   }
 
+  /**
+   * 履歴がMAX_HISTORY_ENTRIESを超えた場合、古いエントリを削除して制限内に収める
+   */
+  private trimHistory(): void {
+    if (this.history.length > MAX_HISTORY_ENTRIES) {
+      const overflow = this.history.length - MAX_HISTORY_ENTRIES;
+      this.history = this.history.slice(overflow);
+      console.log(`[ChatSession] Trimmed ${overflow} old history entries (limit: ${MAX_HISTORY_ENTRIES})`);
+    }
+  }
+
   async sendMessage(prompt: string): Promise<{ text: string; meta: any }> {
     this.history.push({ role: 'user', content: prompt });
+    this.trimHistory();
 
     const combinedPrompt = this.history
       .map(h => `${h.role.toUpperCase()}: ${h.content}`)
@@ -39,6 +53,10 @@ export class ChatSession {
 
     this.history.push({ role: 'model', content: text });
     return { text, meta };
+  }
+
+  getHistoryLength(): number {
+    return this.history.length;
   }
 
   async close(): Promise<void> {
@@ -109,47 +127,53 @@ async function enqueueRequestAndWait(
   // ワーカーへリクエストを書き込む
   await fs.writeFile(requestPath, JSON.stringify(requestData, null, 2), 'utf-8');
 
+  const RESPONSE_TIMEOUT_MS = 5 * 60 * 1000; // 5分
+
   // レスポンスファイルが生成されるのを待機
   return new Promise((resolve, reject) => {
     let isResolved = false;
 
-    // TODO: 定期的なタイムアウト処理を入れる場合はここで設定
+    const cleanup = () => {
+      isResolved = true;
+      watcher.close();
+      clearTimeout(timeoutId);
+    };
+
+    const handleResponse = async () => {
+      try {
+        const respData = JSON.parse(await fs.readFile(responsePath, 'utf-8'));
+        if (respData.error) {
+          if (!options.silent) spinner.fail(`Worker Error: ${respData.error}`);
+          reject(new Error(respData.error));
+        } else {
+          if (!options.silent) spinner.succeed(`Received response from worker.`);
+          resolve({ text: respData.text, meta: respData.meta });
+        }
+      } catch (err: any) {
+        reject(new Error(`Failed to parse worker response: ${err.message}`));
+      }
+    };
+
+    const timeoutId = setTimeout(() => {
+      if (!isResolved) {
+        cleanup();
+        if (!options.silent) spinner.fail(`Worker response timed out after ${RESPONSE_TIMEOUT_MS / 1000}s`);
+        reject(new Error(`Worker response timed out after ${RESPONSE_TIMEOUT_MS / 1000} seconds. The worker may be overloaded or not running.`));
+      }
+    }, RESPONSE_TIMEOUT_MS);
+
     const watcher = watch(responseDir, async (eventType, filename) => {
       if (filename === responseFilename && !isResolved) {
-        isResolved = true;
-        watcher.close();
-        try {
-          const respData = JSON.parse(await fs.readFile(responsePath, 'utf-8'));
-          if (respData.error) {
-            if (!options.silent) spinner.fail(`Worker Error: ${respData.error}`);
-            reject(new Error(respData.error));
-          } else {
-            if (!options.silent) spinner.succeed(`Received response from worker.`);
-            resolve({ text: respData.text, meta: respData.meta });
-          }
-        } catch (err: any) {
-          reject(new Error(`Failed to parse worker response: ${err.message}`));
-        }
+        cleanup();
+        await handleResponse();
       }
     });
 
     // watch 開始前に既にファイルが存在していた場合 (ワーカーの処理が早かった場合)
     fs.access(responsePath).then(async () => {
        if (!isResolved) {
-         isResolved = true;
-         watcher.close();
-         try {
-           const respData = JSON.parse(await fs.readFile(responsePath, 'utf-8'));
-           if (respData.error) {
-             if (!options.silent) spinner.fail(`Worker Error: ${respData.error}`);
-             reject(new Error(respData.error));
-           } else {
-             if (!options.silent) spinner.succeed(`Received response from worker.`);
-             resolve({ text: respData.text, meta: respData.meta });
-           }
-         } catch (err: any) {
-           reject(new Error(`Failed to parse worker response: ${err.message}`));
-         }
+         cleanup();
+         await handleResponse();
        }
     }).catch(() => { /* not exists yet, watch will handle it */ });
   });
@@ -211,7 +235,9 @@ const Decoders = {
           meta: jsonOutput
         };
       }
-    } catch {}
+    } catch (e: any) {
+      console.warn(`[AI] JSON decode warning: ${e.message}`);
+    }
     return { text: rawOutput.trim() };
   },
   jsonl(rawOutput: string) {
@@ -227,7 +253,9 @@ const Decoders = {
           cliMeta.usage = json.usage;
         }
       }
-    } catch {}
+    } catch (e: any) {
+      console.warn(`[AI] JSONL decode warning: ${e.message}`);
+    }
     return { text: text || rawOutput.trim(), meta: cliMeta };
   }
 };
