@@ -278,8 +278,8 @@ const CopilotHandler: AiProviderHandler = {
     return config.ai.model;
   },
   getCommandArgs(model) {
-    const args = [];
-    if (model) args.push('-m', model);
+    const args: string[] = [];
+    if (model) args.push('--model', model);
     return { command: 'copilot', args };
   },
   parseOutput: Decoders.json

@@ -158,7 +158,7 @@ describe('generateContent', () => {
 
     const result = await generateContent('Test prompt');
 
-    expect(spawn).toHaveBeenCalledWith('copilot', ['-m', 'copilot-model']);
+    expect(spawn).toHaveBeenCalledWith('copilot', ['--model', 'copilot-model']);
     expect(result.text).toBe('Copilot Response');
     expect(result.meta.provider).toBe('copilot');
   });
