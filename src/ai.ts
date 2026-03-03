@@ -277,7 +277,7 @@ interface AiProviderHandler {
  */
 const GeminiHandler: AiProviderHandler = {
   getDefaultModel(config) {
-    return config.ai.model || 'gemini-2.0-flash-exp';
+    return config.ai.model;
   },
   getCommandArgs(model) {
     const args = ['-o', 'json'];
