@@ -65,7 +65,14 @@ class UsageTracker {
     // 簡易レポートの生成
     const planningCalls = this.session.calls.filter(c => !c.model.includes('flash')).length;
     const executionCalls = this.session.calls.filter(c => c.model.includes('flash')).length;
-    const savings = Math.max(0, this.session.totalCalls - 1);
+    
+    // 合計トークン数の計算
+    let totalPromptTokens = 0;
+    let totalCompletionTokens = 0;
+    this.session.calls.forEach(c => {
+      if (c.prompt_tokens) totalPromptTokens += c.prompt_tokens;
+      if (c.completion_tokens) totalCompletionTokens += c.completion_tokens;
+    });
 
     return `
 📊 **Agent Usage Report**
@@ -76,8 +83,10 @@ Total LLM Calls: ${this.session.totalCalls}
 - Planning (Premium): ${planningCalls}
 - Execution (Flash): ${executionCalls}
 
-💡 **Bulk Efficiency Tip:**
-If this session was bulked, you could have saved **${savings}** premium request(s).
+Total Tokens Used:
+- Prompt: ${totalPromptTokens}
+- Completion: ${totalCompletionTokens}
+
 Log saved to: ${logPath}
 -----------------------------------------
 `;

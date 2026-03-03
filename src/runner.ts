@@ -36,8 +36,9 @@ export function executeTests(workingDir?: string, command?: string): Promise<{ s
  * 単一の実行ステップを処理し、プロンプト生成・AI呼び出し・スナップショット保存を行う。
  * 実行後に、そのステップ固有のテストがあれば実行する。
  */
-export async function executeStep(step: any, cautions: any[], taskId: string, workingDir?: string): Promise<{ text: string, testResult?: any }> {
-  console.log(`\n--- Executing Step ${step.id} ---`);
+export async function executeStep(step: any, cautions: any[], taskId: string, workingDir?: string, retryCount = 0): Promise<{ text: string, testResult?: any }> {
+  const MAX_RETRIES = 3;
+  console.log(`\n--- Executing Step ${step.id} (Retry: ${retryCount}/${MAX_RETRIES}) ---`);
   console.log(`Description: ${step.description}`);
   console.log(`Target Files: ${step.target_files?.join(', ') || 'None'}`);
 
@@ -126,12 +127,23 @@ export async function executeStep(step: any, cautions: any[], taskId: string, wo
 
     // テスト失敗時のリトライ (TDD Loop)
     if (testResult.code !== 0) {
-      console.log(`\n❌ Step ${step.id} test failed. Attempting self-repair...`);
-      const testErrorMessage = `前回のステップで適用したコードにおいて、テスト '${step.test_command}' が失敗しました。以下のエラーメッセージをもとにコードを修正してください:\n${testResult.stderr || testResult.stdout}`;
-      const retryCautions = [...cautions, { context: 'Test Failure', instruction: testErrorMessage }];
+      if (retryCount >= MAX_RETRIES) {
+        console.error(`\n❌ Step ${step.id} test failed and max retries (${MAX_RETRIES}) reached. Halting.`);
+        throw new Error(`Step ${step.id} test failed after ${MAX_RETRIES} retries.\nDetails:\n${testResult.stderr || testResult.stdout}`);
+      }
+      
+      console.log(`\n❌ Step ${step.id} test failed. Attempting self-repair (Attempt ${retryCount + 1}/${MAX_RETRIES})...`);
+      
+      const rawError = testResult.stderr || testResult.stdout;
+      const truncatedError = rawError.length > 2000 ? rawError.substring(0, 1000) + '\n...[truncated]...\n' + rawError.substring(rawError.length - 1000) : rawError;
+      const testErrorMessage = `前回のステップで適用したコードにおいて、テスト '${step.test_command}' が失敗しました。以下のエラーメッセージをもとにコードを修正してください:\n${truncatedError}`;
+      
+      // Prevent context explosion by keeping only original cautions (filtering out previous test failures)
+      const filteredCautions = cautions.filter((c: any) => c.context !== 'Test Failure');
+      const retryCautions = [...filteredCautions, { context: 'Test Failure', instruction: testErrorMessage }];
       
       // 再生成（cautionsにエラーを含める）
-      const retryResult = await executeStep({ ...step, test_command: undefined }, retryCautions, taskId, workingDir);
+      const retryResult = await executeStep({ ...step, test_command: undefined }, retryCautions, taskId, workingDir, retryCount + 1);
       text = retryResult.text;
 
       // リトライ後の再テスト
@@ -189,10 +201,16 @@ export async function executeBatches(batches: StepBatch[], cautions: any[], task
       console.log(`\n❌ Batch ${i + 1} regression test failed. Attempting batch-level repair...`);
       // バッチ全体での修正が必要な場合、本来は依存関係などを考慮して再計画すべきだが、
       // ここでは簡易的に直前のバッチの全ステップにエラー情報をフィードバックしてリトライする
-      const testErrorMessage = `バッチ実行後の全体テスト 'npm test' が失敗しました。このバッチで変更した内容に問題がある可能性があります。以下のエラーを修正してください:\n${testResult.stderr || testResult.stdout}`;
-      const retryCautions = [...cautions, { context: 'Regression Failure', instruction: testErrorMessage }];
+      
+      const rawError = testResult.stderr || testResult.stdout;
+      const truncatedError = rawError.length > 2000 ? rawError.substring(0, 1000) + '\n...[truncated]...\n' + rawError.substring(rawError.length - 1000) : rawError;
+      
+      const testErrorMessage = `バッチ実行後の全体テスト 'npm test' が失敗しました。このバッチで変更した内容に問題がある可能性があります。以下のエラーを修正してください:\n${truncatedError}`;
+      
+      const filteredCautions = cautions.filter((c: any) => c.context !== 'Regression Failure');
+      const retryCautions = [...filteredCautions, { context: 'Regression Failure', instruction: testErrorMessage }];
 
-      const retryExecutionPromises = batch.steps.map(step => executeStep({ ...step, test_command: undefined }, retryCautions, taskId, workingDir));
+      const retryExecutionPromises = batch.steps.map(step => executeStep({ ...step, test_command: undefined }, retryCautions, taskId, workingDir, 1));
       await Promise.all(retryExecutionPromises);
 
       console.log('\n--- Re-running regression test after batch repair ---');
