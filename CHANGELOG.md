@@ -8,6 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.3] - 2026-02-28
 ### Changed
 - Unify project license to MIT across package.json and documentation.
+## [0.7.0] - 2026-03-04
+### Fixed
+- Prevent command injection in git add by using execFileSync with array arguments.
+- Add error context to AI response decoders (Decoders.json, Decoders.jsonl).
+
+### Added
+- ChatSession history sliding window (max 40 entries) to prevent unbounded memory growth.
+- 5-minute response timeout with resource cleanup for AI request queue.
+- Config caching with clearConfigCache() to avoid repeated TOML parsing.
+- Stale PID file auto-cleanup in worker process management.
+- Request file cleanup and watcher close in eternal worker session.
+- Doing-queue recovery on worker startup.
+
+### Changed
+- Eliminate module-level side effects with lazy initialization across 7 modules.
+- Use consistent global regex for template variable replacement.
+- Move crypto import to top of snapshot.ts for standard import ordering.
+- Simplify runner executeBatches by removing unused variables.
+
 ## [0.6.6] - 2026-03-03
 ### Fixed
 - Corrected model selection flag for `copilot` provider (from `-m` to `--model`).
