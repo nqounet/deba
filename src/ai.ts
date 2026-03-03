@@ -69,7 +69,10 @@ export class ChatSession {
  */
 export async function startChatSession(model?: string, systemInstruction?: string): Promise<ChatSession> {
   const config = await loadConfig();
-  const selectedModel = model || config.ai.model || 'gemini-2.0-flash-exp';
+  const selectedModel = model || config.ai.model;
+  if (!selectedModel) {
+    throw new Error('No model specified. Set ai.model in ~/.deba/config.toml');
+  }
 
   const session = new ChatSession(selectedModel, systemInstruction);
   await session.start();
@@ -327,7 +330,10 @@ export async function directGenerateContent(
   options: { silent?: boolean } = {}
 ): Promise<{ text: string; meta: any }> {
   const config = await loadConfig();
-  const providerName = config.ai.provider || 'gemini';
+  const providerName = config.ai.provider;
+  if (!providerName) {
+    throw new Error('No AI provider configured. Set ai.provider in ~/.deba/config.toml');
+  }
   console.log(`[AI] Using provider: ${providerName}`);
   const handler = PROVIDER_HANDLERS[providerName];
 

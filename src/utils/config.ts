@@ -39,7 +39,8 @@ export async function loadConfig(): Promise<DebaConfig> {
       },
     };
     return cachedConfig;
-  } catch (error) {
+  } catch (error: any) {
+    console.warn(`[Config] ⚠️ Failed to load config (${CONFIG_PATH}): ${error.message}. Using defaults (provider: ${DEFAULT_CONFIG.ai.provider}).`);
     cachedConfig = DEFAULT_CONFIG;
     return cachedConfig;
   }
