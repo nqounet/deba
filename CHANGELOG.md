@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.3] - 2026-02-28
 ### Changed
 - Unify project license to MIT across package.json and documentation.
+## [0.7.1] - 2026-03-04
+### Fixed
+- Eliminate silent fallback to gemini provider; now explicitly throws when provider or model is not configured.
+
 ## [0.7.0] - 2026-03-04
 ### Fixed
 - Prevent command injection in git add by using execFileSync with array arguments.
