@@ -21,22 +21,35 @@ const DEFAULT_CONFIG: DebaConfig = {
 const CONFIG_DIR = path.join(os.homedir(), '.deba');
 const CONFIG_PATH = path.join(CONFIG_DIR, 'config.toml');
 
+let cachedConfig: DebaConfig | null = null;
+
 export async function loadConfig(): Promise<DebaConfig> {
+  if (cachedConfig) return cachedConfig;
+
   try {
     const content = await fs.readFile(CONFIG_PATH, 'utf-8');
     const parsed = parse(content) as any;
     console.log(`[Config] Loaded provider: ${parsed?.ai?.provider}`);
     
-    return {
+    cachedConfig = {
       ai: {
         provider: parsed?.ai?.provider ?? DEFAULT_CONFIG.ai.provider,
         model: parsed?.ai?.model,
         flash_model: parsed?.ai?.flash_model,
       },
     };
+    return cachedConfig;
   } catch (error) {
-    return DEFAULT_CONFIG;
+    cachedConfig = DEFAULT_CONFIG;
+    return cachedConfig;
   }
+}
+
+/**
+ * テスト用: キャッシュをクリアする
+ */
+export function clearConfigCache(): void {
+  cachedConfig = null;
 }
 
 export async function initConfig() {

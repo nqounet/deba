@@ -1,5 +1,5 @@
 import * as fs from 'fs/promises';
-import { readFileSync, unlinkSync, mkdirSync } from 'fs';
+import { readFileSync, unlinkSync } from 'fs';
 import * as path from 'path';
 import { getRepoStorageRoot } from './git.js';
 
@@ -18,6 +18,15 @@ export async function isWorkerRunning(): Promise<boolean> {
     process.kill(pid, 0); 
     return true;
   } catch (err: any) {
+    // PIDファイルが存在するがプロセスが見つからない場合、staleなPIDファイルを自動削除
+    if (err.code === 'ESRCH') {
+      try {
+        await fs.unlink(pidFile);
+        console.log('[WorkerProcess] Cleaned up stale PID file (process no longer exists)');
+      } catch {
+        // 削除失敗は無視
+      }
+    }
     return false;
   }
 }

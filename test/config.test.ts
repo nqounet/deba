@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
-import { loadConfig, initConfig } from '../src/utils/config';
+import { loadConfig, initConfig, clearConfigCache } from '../src/utils/config';
 
 // モックの設定をトップレベルで定義
 vi.mock('os', () => ({
@@ -23,6 +23,7 @@ describe('utils/config module', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    clearConfigCache();
   });
 
   describe('loadConfig', () => {
@@ -45,6 +46,34 @@ model = "gpt-4"
       const config = await loadConfig();
       expect(config.ai.provider).toBe('gemini');
       expect(config.ai.model).toBeUndefined();
+    });
+
+    it('2回目の呼び出しではキャッシュが使われファイルI/Oが発生しないこと', async () => {
+      const tomlContent = `
+[ai]
+provider = "codex"
+`;
+      vi.mocked(fs.readFile).mockResolvedValue(tomlContent);
+
+      const config1 = await loadConfig();
+      const config2 = await loadConfig();
+
+      expect(config1.ai.provider).toBe('codex');
+      expect(config2.ai.provider).toBe('codex');
+      expect(fs.readFile).toHaveBeenCalledTimes(1);
+    });
+
+    it('clearConfigCacheを呼ぶとキャッシュがクリアされること', async () => {
+      vi.mocked(fs.readFile).mockResolvedValue('[ai]\nprovider = "copilot"\n');
+
+      await loadConfig();
+      clearConfigCache();
+
+      vi.mocked(fs.readFile).mockResolvedValue('[ai]\nprovider = "gemini"\n');
+      const config = await loadConfig();
+
+      expect(config.ai.provider).toBe('gemini');
+      expect(fs.readFile).toHaveBeenCalledTimes(2);
     });
   });
 
