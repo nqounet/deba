@@ -25,6 +25,7 @@ export async function loadConfig(): Promise<DebaConfig> {
   try {
     const content = await fs.readFile(CONFIG_PATH, 'utf-8');
     const parsed = parse(content) as any;
+    console.log(`[Config] Loaded provider: ${parsed?.ai?.provider}`);
     
     return {
       ai: {

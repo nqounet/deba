@@ -164,6 +164,7 @@ async function runCliCommand(
   input: string,
   options: { silent?: boolean } = {}
 ): Promise<string> {
+  console.log(`[AI] Executing: ${command} ${args.join(' ')}`);
   return new Promise<string>((resolve, reject) => {
     const child = spawn(command, args);
     let stdout = '';
@@ -299,6 +300,7 @@ export async function directGenerateContent(
 ): Promise<{ text: string; meta: any }> {
   const config = await loadConfig();
   const providerName = config.ai.provider || 'gemini';
+  console.log(`[AI] Using provider: ${providerName}`);
   const handler = PROVIDER_HANDLERS[providerName];
 
   if (!handler) {
