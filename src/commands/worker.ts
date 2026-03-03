@@ -10,7 +10,9 @@ import { extractAndParseYaml } from '../yamlParser.js';
 import { loadConfig } from '../utils/config.js';
 import { acquireWorkerLock, releaseWorkerLock, releaseWorkerLockSync, isWorkerRunning } from '../utils/workerProcess.js';
 
-const PROPOSALS_DIR = path.join(getRepoStorageRoot(), 'brain', 'skills', 'proposals');
+function getProposalsDir(): string {
+  return path.join(getRepoStorageRoot(), 'brain', 'skills', 'proposals');
+}
 
 /**
  * 成功体験からスキルを抽出する (以前と同様のロジックをラップ)
@@ -27,9 +29,10 @@ async function suggestSkillFromSuccess(taskDescription: string, taskResult: stri
     if (parsedObject && parsedObject.skill) {
       const skill = parsedObject.skill;
       const filename = `${skill.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.md`;
-      const filePath = path.join(PROPOSALS_DIR, filename);
+      const proposalsDir = getProposalsDir();
+      const filePath = path.join(proposalsDir, filename);
       
-      await fs.mkdir(PROPOSALS_DIR, { recursive: true });
+      await fs.mkdir(proposalsDir, { recursive: true });
       
       const content = `# Skill Proposal: ${skill.name}\n\n${skill.summary}\n\n## Rule\n${skill.rule}\n\n<!-- metadata\n${JSON.stringify(skill, null, 2)}\n-->`;
       await fs.writeFile(filePath, content, 'utf-8');
@@ -95,6 +98,9 @@ function startRequestsWatcher() {
           completedAt: new Date().toISOString()
         }, null, 2), 'utf-8');
 
+        // 処理済みのリクエストファイルを削除
+        await fs.unlink(reqPath).catch(() => {});
+
         console.log(`[Worker] 📤 Replied to request: ${resFilename}`);
       } catch (error: any) {
         console.error(`[Worker] ❌ Failed to process request ${filename}: ${error.message}`);
@@ -143,10 +149,26 @@ export async function workerCommand(options: { once?: boolean } = {}) {
   
   try {
     await initQueueDirs();
+
+    // 起動時: doing に滞留しているタスクを todo に戻す（前回クラッシュからの復旧）
+    const doingDir = getQueueDirPath('doing');
+    try {
+      const staleFiles = await fs.readdir(doingDir);
+      const staleTasks = staleFiles.filter(f => f.endsWith('.json'));
+      for (const file of staleTasks) {
+        console.log(`[Worker] ♻️ Recovering stale task from doing: ${file}`);
+        await moveTask(file, 'doing', 'todo');
+      }
+      if (staleTasks.length > 0) {
+        console.log(`[Worker] ♻️ Recovered ${staleTasks.length} stale task(s) to todo queue.`);
+      }
+    } catch {
+      // doing ディレクトリが空の場合等は無視
+    }
+
     const requestsWatcher = startRequestsWatcher();
 
     const todoDir = getQueueDirPath('todo');
-    const doingDir = getQueueDirPath('doing');
 
     // 1. セッションの開始
     const session = await startChatSession();
@@ -217,6 +239,7 @@ export async function workerCommand(options: { once?: boolean } = {}) {
       if (options.once) break;
     }
     
+    requestsWatcher.close();
     if (session) await session.close();
 
   } catch (error: any) {

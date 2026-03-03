@@ -12,7 +12,10 @@ const __dirname = path.dirname(__filename);
 // テンプレートのパス (debaプロジェクト内の相対パス)
 const DEBA_PROJECT_ROOT = path.resolve(__dirname, '..');
 const TEMPLATES_DIR = path.join(DEBA_PROJECT_ROOT, 'src', 'templates');
-const EPISODES_DIR = path.join(getRepoStorageRoot(), 'brain', 'episodes');
+
+function getEpisodesDir(): string {
+  return path.join(getRepoStorageRoot(), 'brain', 'episodes');
+}
 
 /**
  * テンプレートファイルを読み込む
@@ -30,20 +33,21 @@ async function loadTemplate(name: string): Promise<string> {
  * 直近のエピソード記録を最大N件読み込む
  */
 async function loadRecentEpisodes(maxCount: number = 5): Promise<string> {
+  const episodesDir = getEpisodesDir();
   try {
     try {
-      await fs.access(EPISODES_DIR);
+      await fs.access(episodesDir);
     } catch {
       // ディレクトリが存在しない場合はエラーにせず空の結果を返す
       return '※記録なし';
     }
-    const files = await fs.readdir(EPISODES_DIR);
+    const files = await fs.readdir(episodesDir);
     const mdFiles = files.filter(f => f.endsWith('.md')).sort().reverse().slice(0, maxCount);
     if (mdFiles.length === 0) return '※記録なし';
 
     let combined = '';
     for (const file of mdFiles) {
-      const filePath = path.join(EPISODES_DIR, file);
+      const filePath = path.join(episodesDir, file);
       try {
         const content = await fs.readFile(filePath, 'utf-8');
         combined += `\n---\n${content}\n`;
@@ -56,7 +60,7 @@ async function loadRecentEpisodes(maxCount: number = 5): Promise<string> {
     return combined;
   } catch (dirError: any) {
     // ディレクトリが存在しないなどのエラー
-    console.error(`エピソードディレクトリの読み込みに失敗しました: ${EPISODES_DIR} - ${dirError.message}`);
+    console.error(`エピソードディレクトリの読み込みに失敗しました: ${episodesDir} - ${dirError.message}`);
     return '※記録なし';
   }
 }
@@ -133,9 +137,9 @@ export async function buildPhaseBPrompt(
     ? cautionsFromPhaseA.map((c: any) => `- [${c.context}] ${c.instruction}`).join('\n')
     : '特になし';
 
-  template = template.replace('{{STEP_DESCRIPTION}}', stepDescription);
-  template = template.replace('{{TARGET_FILE_CONTENT}}', targetFileContent || '（新規ファイルまはた内容なし）');
-  template = template.replace('{{CAUTIONS}}', formattedCautions);
+  template = template.replace(/\{\{STEP_DESCRIPTION\}\}/g, stepDescription);
+  template = template.replace(/\{\{TARGET_FILE_CONTENT\}\}/g, targetFileContent || '（新規ファイルまはた内容なし）');
+  template = template.replace(/\{\{CAUTIONS\}\}/g, formattedCautions);
 
   return template;
 }
@@ -151,9 +155,9 @@ export async function buildReflectionPrompt(
 ): Promise<string> {
   let template = await loadTemplate('reflection');
 
-  template = template.replace('{{EPISODE_SUMMARY}}', episodeSummary);
-  template = template.replace('{{USER_CORRECTIONS}}', userCorrections);
-  template = template.replace('{{CURRENT_SKILLS}}', currentSkills || '（まだスキルの蓄積なし）');
+  template = template.replace(/\{\{EPISODE_SUMMARY\}\}/g, episodeSummary);
+  template = template.replace(/\{\{USER_CORRECTIONS\}\}/g, userCorrections);
+  template = template.replace(/\{\{CURRENT_SKILLS\}\}/g, currentSkills || '（まだスキルの蓄積なし）');
 
   return template;
 }
@@ -167,8 +171,8 @@ export async function buildSkillSuggestionPrompt(
 ): Promise<string> {
   let template = await loadTemplate('skill_suggestion');
 
-  template = template.replace('{{TASK_DESCRIPTION}}', taskDescription);
-  template = template.replace('{{TASK_RESULT}}', taskResult);
+  template = template.replace(/\{\{TASK_DESCRIPTION\}\}/g, taskDescription);
+  template = template.replace(/\{\{TASK_RESULT\}\}/g, taskResult);
 
   return template;
 }
@@ -185,7 +189,7 @@ export async function buildWorkerEternalPrompt(queueStatus: string): Promise<str
   const skills = await loadSkills();
   template = template.replace(/\{\{SEMANTIC_MEMORY\}\}/g, skills || '※まだ蓄積されたスキルなし');
 
-  template = template.replace('{{QUEUE_STATUS}}', queueStatus);
+  template = template.replace(/\{\{QUEUE_STATUS\}\}/g, queueStatus);
 
   return template;
 }
@@ -195,8 +199,8 @@ export async function buildWorkerEternalPrompt(queueStatus: string): Promise<str
  */
 export async function buildIngestionPrompt(fileTree: string, contextFiles: string): Promise<string> {
   let template = await loadTemplate('ingestion');
-  template = template.replace('{{FILE_TREE}}', fileTree);
-  template = template.replace('{{CONTEXT_FILES}}', contextFiles);
+  template = template.replace(/\{\{FILE_TREE\}\}/g, fileTree);
+  template = template.replace(/\{\{CONTEXT_FILES\}\}/g, contextFiles);
   return template;
 }
 
@@ -205,7 +209,7 @@ export async function buildIngestionPrompt(fileTree: string, contextFiles: strin
  */
 export async function buildMaintenancePrompt(content: string): Promise<string> {
   let template = await loadTemplate('maintenance');
-  return template.replace('{{CONTENT}}', content);
+  return template.replace(/\{\{CONTENT\}\}/g, content);
 }
 
 /**
@@ -213,5 +217,5 @@ export async function buildMaintenancePrompt(content: string): Promise<string> {
  */
 export async function buildRepairPrompt(errorDetail: string): Promise<string> {
   let template = await loadTemplate('repair');
-  return template.replace('{{ERROR_DETAIL}}', errorDetail);
+  return template.replace(/\{\{ERROR_DETAIL\}\}/g, errorDetail);
 }

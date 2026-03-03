@@ -10,8 +10,13 @@ import { generateContent } from '../ai.js';
 import { initConfig } from '../utils/config.js';
 import { buildMaintenancePrompt } from '../prompt.js';
 
-const PROPOSALS_DIR = path.join(getRepoStorageRoot(), 'brain', 'skills', 'proposals');
-const SKILLS_DIR = path.join(getRepoStorageRoot(), 'brain', 'skills');
+function getProposalsDir(): string {
+  return path.join(getRepoStorageRoot(), 'brain', 'skills', 'proposals');
+}
+
+function getSkillsDir(): string {
+  return path.join(getRepoStorageRoot(), 'brain', 'skills');
+}
 
 function askQuestion(query: string): Promise<string> {
   const rl = readline.createInterface({
@@ -96,17 +101,20 @@ export async function skillsPromoteCommand(rule: string, options: { project: str
 }
 
 export async function promoteLearningsCommand(options: { yes?: boolean }) {
+  const proposalsDir = getProposalsDir();
+  const skillsDir = getSkillsDir();
+
   // 1. スキル提案（Proposals）のチェック
   let proposals: string[] = [];
   try {
-    const files = await fs.readdir(PROPOSALS_DIR);
+    const files = await fs.readdir(proposalsDir);
     proposals = files.filter(f => f.endsWith('.md'));
   } catch {}
 
   if (proposals.length > 0) {
     console.log(`\n✨ ${proposals.length} 件の新しいスキル提案があります。\n`);
     for (const file of proposals) {
-      const filePath = path.join(PROPOSALS_DIR, file);
+      const filePath = path.join(proposalsDir, file);
       const content = await fs.readFile(filePath, 'utf-8');
       
       console.log('---');
@@ -124,8 +132,8 @@ export async function promoteLearningsCommand(options: { yes?: boolean }) {
       }
       
       if (shouldPromote) {
-        await fs.mkdir(SKILLS_DIR, { recursive: true });
-        await fs.rename(filePath, path.join(SKILLS_DIR, file));
+        await fs.mkdir(skillsDir, { recursive: true });
+        await fs.rename(filePath, path.join(skillsDir, file));
         console.log('✅ 正式なスキルとして登録しました。');
       } else {
         console.log('⏩ スキップしました。');
@@ -177,12 +185,13 @@ export async function promoteLearningsCommand(options: { yes?: boolean }) {
 
 export async function consolidateSkillsCommand() {
   console.log('🚀 スキルファイルの統合を開始します...');
+  const skillsDir = getSkillsDir();
   let files: string[] = [];
   try {
-    files = await fs.readdir(SKILLS_DIR);
+    files = await fs.readdir(skillsDir);
     files = files.filter(f => f.endsWith('.md'));
   } catch (error) {
-    console.error(`エラー: スキルディレクトリ '${SKILLS_DIR}' の読み込みに失敗しました。`, error);
+    console.error(`エラー: スキルディレクトリ '${skillsDir}' の読み込みに失敗しました。`, error);
     return;
   }
 
@@ -192,7 +201,7 @@ export async function consolidateSkillsCommand() {
   }
 
   for (const file of files) {
-    const filePath = path.join(SKILLS_DIR, file);
+    const filePath = path.join(skillsDir, file);
     console.log(`🔄 ファイルをリファクタリング中: ${filePath}`);
 
     try {

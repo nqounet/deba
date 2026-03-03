@@ -2,8 +2,9 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { getRepoStorageRoot } from './utils/git.js';
 
-const BRAIN_DIR = path.join(getRepoStorageRoot(), 'brain');
-const GROWTH_LOG_DIR = path.join(BRAIN_DIR, 'growth_log');
+function getGrowthLogDir(): string {
+  return path.join(getRepoStorageRoot(), 'brain', 'growth_log');
+}
 
 export interface LearningEntry {
   summary: string;
@@ -18,7 +19,8 @@ export interface LearningEntry {
  * 保存先: brain/growth_log/{year}-{month}.md
  */
 export async function appendGrowthLog(entry: LearningEntry): Promise<string> {
-  await fs.mkdir(GROWTH_LOG_DIR, { recursive: true });
+  const growthLogDir = getGrowthLogDir();
+  await fs.mkdir(growthLogDir, { recursive: true });
 
   const now = new Date();
   const year = now.getFullYear();
@@ -26,7 +28,7 @@ export async function appendGrowthLog(entry: LearningEntry): Promise<string> {
   const dateStr = now.toISOString().split('T')[0];
 
   const filename = `${year}-${month}.md`;
-  const filepath = path.join(GROWTH_LOG_DIR, filename);
+  const filepath = path.join(growthLogDir, filename);
 
   // ファイルが存在しなければヘッダーを作成
   let existingContent = '';
@@ -63,12 +65,13 @@ export interface PendingLearning extends LearningEntry {
  */
 export async function getPendingLearnings(): Promise<PendingLearning[]> {
   const pending: PendingLearning[] = [];
+  const growthLogDir = getGrowthLogDir();
   try {
-    const files = await fs.readdir(GROWTH_LOG_DIR);
+    const files = await fs.readdir(growthLogDir);
     const mdFiles = files.filter(f => f.endsWith('.md'));
 
     for (const file of mdFiles) {
-      const filepath = path.join(GROWTH_LOG_DIR, file);
+      const filepath = path.join(growthLogDir, file);
       const content = await fs.readFile(filepath, 'utf-8');
       
       // ### 学び: で分割

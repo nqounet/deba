@@ -22,10 +22,9 @@ export interface UsageSession {
 
 class UsageTracker {
   private session: UsageSession;
-  private logDir: string;
+  private logDir: string | null = null;
 
   constructor() {
-    this.logDir = path.join(getRepoStorageRoot(), 'brain', 'usage_logs');
     this.session = {
       sessionId: `session_${new Date().getTime()}`,
       command: process.argv.join(' '),
@@ -33,6 +32,13 @@ class UsageTracker {
       totalCalls: 0,
       calls: [],
     };
+  }
+
+  private getLogDir(): string {
+    if (!this.logDir) {
+      this.logDir = path.join(getRepoStorageRoot(), 'brain', 'usage_logs');
+    }
+    return this.logDir;
   }
 
   /**
@@ -54,12 +60,13 @@ class UsageTracker {
     this.session.endTime = new Date().toISOString();
     
     // ログディレクトリの作成
-    if (!fs.existsSync(this.logDir)) {
-      fs.mkdirSync(this.logDir, { recursive: true });
+    const logDir = this.getLogDir();
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir, { recursive: true });
     }
 
     // JSON ログの書き出し
-    const logPath = path.join(this.logDir, `${this.session.sessionId}.json`);
+    const logPath = path.join(logDir, `${this.session.sessionId}.json`);
     fs.writeFileSync(logPath, JSON.stringify(this.session, null, 2), 'utf-8');
 
     // 簡易レポートの生成

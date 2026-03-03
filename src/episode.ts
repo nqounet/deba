@@ -2,7 +2,9 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { getRepoStorageRoot } from './utils/git.js';
 
-const EPISODES_DIR = path.join(getRepoStorageRoot(), 'brain', 'episodes');
+function getEpisodesDir(): string {
+  return path.join(getRepoStorageRoot(), 'brain', 'episodes');
+}
 
 export interface EpisodeData {
   taskId: string;
@@ -18,7 +20,8 @@ export interface EpisodeData {
  * 保存先: brain/episodes/{date}_{seq}.md
  */
 export async function saveEpisode(episode: EpisodeData): Promise<string> {
-  await fs.mkdir(EPISODES_DIR, { recursive: true });
+  const episodesDir = getEpisodesDir();
+  await fs.mkdir(episodesDir, { recursive: true });
 
   const now = new Date();
   const dateStr = now.toISOString().split('T')[0]; // yyyy-mm-dd
@@ -26,7 +29,7 @@ export async function saveEpisode(episode: EpisodeData): Promise<string> {
   // 連番を決定（同日の既存ファイル数 + 1）
   let seq = 1;
   try {
-    const files = await fs.readdir(EPISODES_DIR);
+    const files = await fs.readdir(episodesDir);
     const todayFiles = files.filter(f => f.startsWith(dateStr));
     seq = todayFiles.length + 1;
   } catch {
@@ -35,7 +38,7 @@ export async function saveEpisode(episode: EpisodeData): Promise<string> {
 
   const seqStr = String(seq).padStart(3, '0');
   const filename = `${dateStr}_${seqStr}.md`;
-  const filepath = path.join(EPISODES_DIR, filename);
+  const filepath = path.join(episodesDir, filename);
 
   const stepsSection = episode.stepsExecuted.length > 0
     ? episode.stepsExecuted.map(s => `  - ${s}`).join('\n')
