@@ -1,6 +1,6 @@
 {
   "name": "@nqounet/deba",
-  "version": "0.6.5",
+  "version": "0.6.6",
   "engines": {
     "node": ">=20.0.0"
   },
