@@ -31,6 +31,25 @@ If a task (e.g., `deba run`) fails or halts during the execution phase (Phase B)
 - When a task is confirmed successful by the user, or when you have provided a clear fix and verified the Reflection results as useful, prefer using the `--yes` (or `-y`) option with `review` and `maintenance promote` commands to streamline the growth cycle.
 - Use `--yes` when you are confident that the learning extracted is accurate and aligns with project standards.
 
+## Best Practices & Conventions
+
+### General Coding Conventions
+- **Output Formatting**: 
+  - When outputting YAML, wrap strings containing colons (:) in double quotes or use block scalars (|) to avoid parse errors.
+  - If a specific format (YAML, JSON, etc.) is requested, output *only* that data. Do not include preambles, explanations, or Markdown code block markers (```) unless explicitly asked.
+- **Testing & Mocking**: 
+  - When mocking libraries with method chaining (builder pattern), apply `mockReturnThis()` to all intermediate methods to ensure the chain remains intact.
+
+### Deba Specific Conventions
+- **Localization**: Output error messages and logs in Japanese to facilitate user communication.
+- **Execution Safety**: 
+  - **Commit before Run**: Always commit changes in the main working tree before running tasks that use Git Worktrees (e.g., `deba run-plan`), as uncommitted changes are not reflected in isolated environments.
+  - **Path Verification**: Always verify the existence and accuracy of file paths using `list_directory` or `glob` before performing file operations. Ask the user if paths are ambiguous.
+  - **Source of Truth**: Treat the actual file system as the final authority on technical stacks. If `GEMINI.md` or other docs conflict with `package.json`, `tsconfig.json`, or project structure, follow the file system and notify the user.
+- **Prompt Engineering**: 
+  - Externalize prompts into `src/templates/` as Markdown files using `{{VARIABLE}}` placeholders.
+  - Use clear hierarchical structures in prompts (e.g., `# Title`, `## System Role`, `## Context`).
+
 ## Command Reference
 
 ### Top-level Commands
