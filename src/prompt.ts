@@ -11,7 +11,7 @@ const __dirname = path.dirname(__filename);
 
 // テンプレートのパス (debaプロジェクト内の相対パス)
 const DEBA_PROJECT_ROOT = path.resolve(__dirname, '..');
-const TEMPLATES_DIR = path.join(DEBA_PROJECT_ROOT, 'templates');
+const TEMPLATES_DIR = path.join(DEBA_PROJECT_ROOT, 'src', 'templates');
 const EPISODES_DIR = path.join(getRepoStorageRoot(), 'brain', 'episodes');
 
 /**
