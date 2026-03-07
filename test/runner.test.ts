@@ -181,5 +181,26 @@ describe('runner module', () => {
       // 初回テスト + リトライ後テスト
       expect(exec).toHaveBeenCalledTimes(2);
     });
+
+    it('先行ステップが AMBIGUITY を返した場合、依存する後続ステップをスキップすること', async () => {
+      // Step 1: AMBIGUITY を返す
+      vi.mocked(ai.generateContent).mockResolvedValueOnce({
+        text: 'AMBIGUITY: Need more info',
+        meta: {}
+      } as any);
+
+      const batches = [
+        { steps: [{ id: 1, description: 's1', target_files: [], dependencies: [] }] },
+        { steps: [{ id: 2, description: 's2', target_files: [], dependencies: [1] }] }
+      ];
+
+      // package.json へのアクセスを拒否して全体テストをスキップ
+      vi.mocked(fs.access).mockRejectedValue(new Error('no package.json'));
+
+      await executeBatches(batches, [], 'task_123', '/mock/dir');
+
+      // Step 1 は実行されるが、Step 2 は依存関係が解決されないため実行されない
+      expect(ai.generateContent).toHaveBeenCalledTimes(1);
+    });
   });
 });

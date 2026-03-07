@@ -36,7 +36,7 @@ export function executeTests(workingDir?: string, command?: string): Promise<{ s
  * 単一の実行ステップを処理し、プロンプト生成・AI呼び出し・スナップショット保存を行う。
  * 実行後に、そのステップ固有のテストがあれば実行する。
  */
-export async function executeStep(step: any, cautions: any[], taskId: string, workingDir?: string, retryCount = 0): Promise<{ text: string, testResult?: any }> {
+export async function executeStep(step: any, cautions: any[], taskId: string, workingDir?: string, retryCount = 0): Promise<{ text: string, success: boolean, testResult?: any }> {
   const MAX_RETRIES = 3;
   console.log(`\n--- Executing Step ${step.id} (Retry: ${retryCount}/${MAX_RETRIES}) ---`);
   console.log(`Description: ${step.description}`);
@@ -88,14 +88,14 @@ export async function executeStep(step: any, cautions: any[], taskId: string, wo
   console.log(text);
   console.log(`=========================================\n`);
 
+  // AIの回答が AMBIGUITY: で始まる場合は、実行を中断する
+  if (text.trim().startsWith('AMBIGUITY:')) {
+    console.warn(`⚠️ Skipped applying changes because AI reported ambiguity.`);
+    return { text, success: false };
+  }
+
   // --- 実ファイルへの適用 ---
   if (Array.isArray(step.target_files) && step.target_files.length > 0) {
-    // AIの回答が AMBIGUITY: で始まる場合は、ファイルへの書き込みをスキップする
-    if (text.trim().startsWith('AMBIGUITY:')) {
-      console.warn(`⚠️ Skipped applying changes because AI reported ambiguity.`);
-      return { text };
-    }
-
     if (step.target_files.length > 1) {
       console.warn(`⚠️ Multiple target files specified for step ${step.id}. Applying changes only to the first file: ${step.target_files[0]}`);
     }
@@ -149,10 +149,14 @@ export async function executeStep(step: any, cautions: any[], taskId: string, wo
       // リトライ後の再テスト
       console.log(`\n[Step ${step.id}] Re-running targeted test after repair: ${step.test_command}`);
       testResult = await executeTests(workingDir, step.test_command);
+
+      if (testResult.code !== 0) {
+        return { text, success: false, testResult };
+      }
     }
   }
 
-  return { text, testResult };
+  return { text, success: true, testResult };
 }
 
 /**
@@ -160,6 +164,9 @@ export async function executeStep(step: any, cautions: any[], taskId: string, wo
  */
 export async function executeBatches(batches: StepBatch[], cautions: any[], taskId: string, workingDir?: string): Promise<void> {
   console.log('\nStarting Execution Phase (Phase B)...');
+  const completedStepIds = new Set<number>();
+  const allStepIds = new Set<number>();
+  batches.forEach(b => b.steps.forEach(s => allStepIds.add(s.id)));
   
   for (let i = 0; i < batches.length; i++) {
     const batch = batches[i];
@@ -167,12 +174,33 @@ export async function executeBatches(batches: StepBatch[], cautions: any[], task
     spinner.start(`Executing Batch ${i + 1}/${batches.length} (Steps: [${stepIds}])...`);
 
     try {
+      // バッチ内のステップをフィルタリング：依存関係がすべて完了しているもののみ実行
+      const executableSteps = batch.steps.filter(step => {
+        const deps = step.dependencies || [];
+        const unmetDeps = deps.filter((d: number) => !completedStepIds.has(d));
+        if (unmetDeps.length > 0) {
+          console.warn(`\n⚠️ Skipping Step ${step.id} because dependencies are not met: [${unmetDeps.join(', ')}]`);
+          return false;
+        }
+        return true;
+      });
+
+      if (executableSteps.length === 0) {
+        spinner.warn(`Batch ${i + 1} has no executable steps due to unmet dependencies.`);
+        continue;
+      }
+
       // バッチ内のステップは並列実行
-      const executionPromises = batch.steps.map(step => executeStep(step, cautions, taskId, workingDir));
+      const executionPromises = executableSteps.map(async (step) => {
+        const result = await executeStep(step, cautions, taskId, workingDir);
+        if (result.success) {
+          completedStepIds.add(step.id);
+        }
+      });
       
       // バッチ内のすべてのステップの実行完了を待機
       await Promise.all(executionPromises);
-      spinner.succeed(`Batch ${i + 1} steps completed.`);
+      spinner.succeed(`Batch ${i + 1} steps processed.`);
     } catch (error) {
       spinner.fail(`Batch ${i + 1} execution failed.`);
       throw error;
@@ -227,5 +255,12 @@ export async function executeBatches(batches: StepBatch[], cautions: any[], task
     }
   }
 
-  console.log('\nすべてのバッチが正常に実行され、テストを通過しました。');
+  const successCount = completedStepIds.size;
+  const totalCount = allStepIds.size;
+
+  if (successCount === totalCount) {
+    console.log('\n🎉 すべてのステップが正常に実行され、テストを通過しました。');
+  } else {
+    console.log(`\n⚠️ 実行完了: ${successCount} ステップ成功 / ${totalCount} ステップ中 (${totalCount - successCount} ステップがスキップまたは未完了)`);
+  }
 }
