@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises';
 import yaml from 'yaml';
-import { validatePhaseA } from '../validator.js';
+import { validatePlanning } from '../validator.js';
 import { validateAndBuildBatches } from '../dag.js';
 import { executeStep } from '../runner.js';
 import { generateTaskId } from '../snapshot.js';
@@ -12,7 +12,7 @@ export async function validateCommand(filepath: string) {
   console.log(`\n--- Validating ${filepath} ---`);
 
   console.log(`\n[1] Schema Validation:`);
-  const schemaResult = validatePhaseA(parsedData);
+  const schemaResult = validatePlanning(parsedData);
   if (!schemaResult.isValid) {
     console.error('❌ Schema validation failed with errors:');
     schemaResult.errors.forEach(e => console.error(`  - ${e}`));

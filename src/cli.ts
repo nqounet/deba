@@ -40,7 +40,7 @@ program
 
 program
   .command('plan')
-  .description('Phase A: ユーザーの要望から要件定義と実装計画を生成する')
+  .description('Planning: ユーザーの要望から要件定義と実装計画を生成する')
   .argument('<request>', '要件定義の元となるユーザーの要望')
   .option('--file <path...>', '入力ファイル (複数指定可)')
   .action(planCommand);
@@ -60,20 +60,20 @@ program
 
 program
   .command('validate')
-  .description('Phase A の出力(YAML)をパースし、スキーマと依存グラフの検証を行いバッチプランを出力する')
+  .description('Planning の出力(YAML)をパースし、スキーマと依存グラフの検証を行いバッチプランを出力する')
   .argument('<filepath>', '検証するYAMLファイルのパス')
   .action(validateCommand);
 
 program
   .command('execute')
-  .description('Phase B: Phase Aの実装計画から指定したステップを実行する (軽量モデルを使用)')
+  .description('Execution: Planningの実装計画から指定したステップを実行する (軽量モデルを使用)')
   .requiredOption('--step <id>', '実行するステップのID')
-  .requiredOption('--plan <filepath>', 'Phase Aで出力されたYAMLファイル')
+  .requiredOption('--plan <filepath>', 'Planningで出力されたYAMLファイル')
   .action(executeCommand);
 
 program
   .command('run')
-  .description('Phase A → Verify → Phase B を一気通貫で実行する')
+  .description('Planning → Verify → Execution を一気通貫で実行する')
   .argument('<request>', '要件定義の元となるユーザーの要望')
   .option('--file <path...>', '入力ファイル (複数指定可)')
   .action(runCommand);

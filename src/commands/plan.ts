@@ -1,11 +1,9 @@
 import yaml from 'yaml';
 import { generateContent } from '../ai.js';
 import { saveSnapshot, generateTaskId } from '../snapshot.js';
-import { buildPhaseAPrompt, buildRepairPrompt } from '../prompt.js';
-import { extractAndParseYaml } from '../yamlParser.js';
-import { validatePhaseA } from '../validator.js';
 import { initQueueDirs, enqueueStep } from '../utils/queue.js';
 import { loadConfig } from '../utils/config.js';
+import { executePlanning } from '../services/planning.js';
 
 export async function chatCommand(message: string) {
   const config = await loadConfig();
@@ -26,45 +24,12 @@ export async function chatCommand(message: string) {
 }
 
 export async function planCommand(request: string, options: { file?: string[] }) {
-  console.log('Building Phase A prompt...');
-  const prompt = await buildPhaseAPrompt(request, options.file);
-  const config = await loadConfig();
-
-  const { text, meta } = await generateContent(prompt, config.ai.planning);
-  
-  console.log('Extracting and parsing YAML...');
-  let { yamlRaw, parsedObject, error } = extractAndParseYaml(text);
-
-  const needsRepair = error || !parsedObject || typeof parsedObject !== 'object' || !validatePhaseA(parsedObject).isValid;
-  
-  if (needsRepair) {
-    const errorDetail = error || (parsedObject && typeof parsedObject === 'object' ? validatePhaseA(parsedObject).errors.join(', ') : '出力が正しいオブジェクト形式ではありません');
-    console.warn(`⚠️ YAML validation/parse error: ${errorDetail}`);
-    console.log('Attempting self-healing (retry 1/1)...');
-    
-    const repairPrompt = await buildRepairPrompt(errorDetail);
-    const { text: repairedText } = await generateContent(repairPrompt, config.ai.execution);
-    
-    const repairResult = extractAndParseYaml(repairedText);
-    if (!repairResult.error && repairResult.parsedObject && typeof repairResult.parsedObject === 'object' && validatePhaseA(repairResult.parsedObject).isValid) {
-      console.log('✅ Self-healing successful!');
-      yamlRaw = repairResult.yamlRaw;
-      parsedObject = repairResult.parsedObject;
-      error = undefined;
-    } else {
-      console.error(`❌ Self-healing failed: ${repairResult.error || '依然としてバリデーションを通過できません'}`);
-    }
-  }
-
   const taskId = generateTaskId();
-  const snapshotDir = await saveSnapshot(taskId, {
-    input: prompt,
-    outputRaw: text,
-    outputParsed: parsedObject || { error: 'Parse failed', message: error, raw: yamlRaw },
-    meta: meta,
-  });
+  const config = await loadConfig();
+  
+  const { parsedObject, error, snapshotDir } = await executePlanning(taskId, request, options);
 
-  console.log(`\n===== Phase A Output (Parsed) =====`);
+  console.log(`\n===== Planning Output (Parsed) =====`);
   if (parsedObject) {
     console.log(yaml.stringify(parsedObject));
     

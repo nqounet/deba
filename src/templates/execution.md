@@ -1,4 +1,4 @@
-# Phase B: Task Execution
+# Execution: Task Execution
 
 ## Core Instruction
 以下の実装ステップを正確に実行してください。設計判断は不要です。

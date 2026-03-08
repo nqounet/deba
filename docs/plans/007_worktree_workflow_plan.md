@@ -19,7 +19,7 @@ $ deba run "リファクタリングして"
 # 1. taskId (例: task_20260225_001) を生成
 # 2. .worktrees/ ディレクトリをプロジェクトルートに作成
 # 3. git worktree add .worktrees/deba-wt-task_20260225_001 -b feature/task_20260225_001
-# 4. Worktree 内で Phase A (計画), Phase B (実装), テスト実行 を行う
+# 4. Worktree 内で Planning (計画), Execution (実装), テスト実行 を行う
 # 5. スナップショットや実行ログは「本体」の snapshots/ に保存する
 ```
 

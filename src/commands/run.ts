@@ -1,16 +1,14 @@
 import * as fs from 'fs/promises';
 import yaml from 'yaml';
-import { generateContent } from '../ai.js';
-import { saveSnapshot, generateTaskId } from '../snapshot.js';
-import { buildPhaseAPrompt, buildRepairPrompt } from '../prompt.js';
-import { extractAndParseYaml } from '../yamlParser.js';
-import { validatePhaseA } from '../validator.js';
+import { generateTaskId } from '../snapshot.js';
+import { validatePlanning } from '../validator.js';
 import { validateAndBuildBatches } from '../dag.js';
 import { executeBatches } from '../runner.js';
 import { listSkills as listSkillsInfo } from '../skills.js';
 import { createWorktree } from '../utils/git.js';
 import { moveAllSteps } from '../utils/queue.js';
 import { loadConfig } from '../utils/config.js';
+import { executePlanning } from '../services/planning.js';
 
 export async function runCommand(request: string, options: { file?: string[] }) {
   const taskId = generateTaskId();
@@ -21,49 +19,16 @@ export async function runCommand(request: string, options: { file?: string[] }) 
     console.log(`💡 過去の学びを活用しています (${skillCount}件のスキル)`);
   }
 
-  console.log(`\n--- Phase A (Plan) ---`);
-  const prompt = await buildPhaseAPrompt(request, options.file);
+  console.log(`\n--- Planning (Plan) ---`);
   const config = await loadConfig();
-  
-  const { text, meta } = await generateContent(prompt, config.ai.execution);
-  
-  console.log('Extracting and parsing YAML...');
-  let { yamlRaw, parsedObject, error } = extractAndParseYaml(text);
-
-  const needsRepair = error || !parsedObject || typeof parsedObject !== 'object' || !validatePhaseA(parsedObject).isValid;
-  
-  if (needsRepair) {
-    const errorDetail = error || (parsedObject && typeof parsedObject === 'object' ? validatePhaseA(parsedObject).errors.join(', ') : '出力が正しいオブジェクト形式ではありません');
-    console.warn(`⚠️ YAML/JSON validation/parse error: ${errorDetail}`);
-    console.log('Attempting self-healing (retry 1/1)...');
-    
-    const repairPrompt = await buildRepairPrompt(errorDetail);
-    const { text: repairedText } = await generateContent(repairPrompt, config.ai.execution);
-    
-    const repairResult = extractAndParseYaml(repairedText);
-    if (!repairResult.error && repairResult.parsedObject && typeof repairResult.parsedObject === 'object' && validatePhaseA(repairResult.parsedObject).isValid) {
-      console.log('✅ Self-healing successful!');
-      yamlRaw = repairResult.yamlRaw;
-      parsedObject = repairResult.parsedObject;
-      error = undefined;
-    } else {
-      console.error(`❌ Self-healing failed: ${repairResult.error || '依然としてバリデーションを通過できません'}`);
-    }
-  }
-
-  const snapshotDir = await saveSnapshot(taskId, {
-     input: prompt,
-     outputRaw: text,
-     outputParsed: parsedObject || { error: 'Parse failed', message: error, raw: yamlRaw },
-     meta: meta,
-  }, 'phase_a');
+  const { parsedObject, error } = await executePlanning(taskId, request, options);
 
   if (!parsedObject || error) {
     throw new Error(`YAML parsing failed: ${error}`);
   }
   
   console.log(`\n--- Validate ---`);
-  const schemaResult = validatePhaseA(parsedObject);
+  const schemaResult = validatePlanning(parsedObject);
   if (!schemaResult.isValid) {
      throw new Error(`Schema validation failed:\n  ${schemaResult.errors.join('\n  ')}`);
   }
@@ -102,7 +67,7 @@ export async function runPlanCommand(filepath: string) {
   const parsedData = yaml.parse(fileContent);
 
   console.log(`\n--- Validate ---`);
-  const schemaResult = validatePhaseA(parsedData);
+  const schemaResult = validatePlanning(parsedData);
   if (!schemaResult.isValid) {
      throw new Error(`Schema validation failed:\n  ${schemaResult.errors.join('\n  ')}`);
   }

@@ -1,4 +1,4 @@
-# Phase A: Planning and Design
+# Planning: Planning and Design
 
 ## System Role
 あなたは、ユーザーの要望をソフトウェア実装に変換する上流設計エンジニアです。

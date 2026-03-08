@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { validatePhaseA } from '../src/validator';
+import { validatePlanning } from '../src/validator';
 
-describe('validatePhaseA', () => {
+describe('validatePlanning', () => {
   // 正常系テストケース
-  it('should return isValid: true and no errors/warnings for a valid Phase A plan', () => {
+  it('should return isValid: true and no errors/warnings for a valid Planning plan', () => {
     const validData = {
       requirements: {
         goal: 'Implement feature X',
@@ -37,7 +37,7 @@ describe('validatePhaseA', () => {
       ]
     };
 
-    const result = validatePhaseA(validData);
+    const result = validatePlanning(validData);
     expect(result.isValid).toBe(true);
     expect(result.errors).toEqual([]);
     expect(result.warnings).toEqual([]);
@@ -58,7 +58,7 @@ describe('validatePhaseA', () => {
         ]
       }
     };
-    const result = validatePhaseA(invalidData);
+    const result = validatePlanning(invalidData);
     expect(result.isValid).toBe(false);
     expect(result.errors).toContain('Missing "requirements" object.');
   });
@@ -80,7 +80,7 @@ describe('validatePhaseA', () => {
         ]
       }
     };
-    const result = validatePhaseA(invalidData);
+    const result = validatePlanning(invalidData);
     expect(result.isValid).toBe(false);
     expect(result.errors).toContain('Missing "requirements.goal".');
   });
@@ -119,10 +119,10 @@ describe('validatePhaseA', () => {
         ]
       }
     };
-    const result1 = validatePhaseA(invalidData1);
+    const result1 = validatePlanning(invalidData1);
     expect(result1.isValid).toBe(false);
     expect(result1.errors).toContain('Missing or empty "requirements.acceptance_criteria".');
-    const result2 = validatePhaseA(invalidData2);
+    const result2 = validatePlanning(invalidData2);
     expect(result2.isValid).toBe(false);
     expect(result2.errors).toContain('Missing or empty "requirements.acceptance_criteria".');
   });
@@ -134,7 +134,7 @@ describe('validatePhaseA', () => {
         acceptance_criteria: ['Criterion 1']
       }
     };
-    const result = validatePhaseA(invalidData);
+    const result = validatePlanning(invalidData);
     expect(result.isValid).toBe(false);
     expect(result.errors).toContain('Missing "implementation_plan" object.');
   });
@@ -156,10 +156,10 @@ describe('validatePhaseA', () => {
         steps: 'not an array'
       }
     };
-    const result1 = validatePhaseA(invalidData1);
+    const result1 = validatePlanning(invalidData1);
     expect(result1.isValid).toBe(false);
     expect(result1.errors).toContain('Missing or invalid "implementation_plan.steps". Must be an array.');
-    const result2 = validatePhaseA(invalidData2);
+    const result2 = validatePlanning(invalidData2);
     expect(result2.isValid).toBe(false);
     expect(result2.errors).toContain('Missing or invalid "implementation_plan.steps". Must be an array.');
   });
@@ -174,7 +174,7 @@ describe('validatePhaseA', () => {
         steps: []
       }
     };
-    const result = validatePhaseA(invalidData);
+    const result = validatePlanning(invalidData);
     expect(result.isValid).toBe(false);
     expect(result.errors).toContain('"implementation_plan.steps" is empty. At least one step is required.');
   });
@@ -191,7 +191,7 @@ describe('validatePhaseA', () => {
         ]
       }
     };
-    const result = validatePhaseA(invalidData);
+    const result = validatePlanning(invalidData);
     expect(result.isValid).toBe(false);
     expect(result.errors).toContain('Step at index 0 is not an object.');
   });
@@ -213,7 +213,7 @@ describe('validatePhaseA', () => {
         ]
       }
     };
-    const result = validatePhaseA(invalidData);
+    const result = validatePlanning(invalidData);
     expect(result.isValid).toBe(false);
     expect(result.errors).toContain('Step at index 0 is missing "id".');
   });
@@ -243,7 +243,7 @@ describe('validatePhaseA', () => {
         ]
       }
     };
-    const result = validatePhaseA(invalidData);
+    const result = validatePlanning(invalidData);
     expect(result.isValid).toBe(false);
     expect(result.errors).toContain('Duplicate step ID found: 1');
   });
@@ -265,7 +265,7 @@ describe('validatePhaseA', () => {
         ]
       }
     };
-    const result = validatePhaseA(invalidData);
+    const result = validatePlanning(invalidData);
     expect(result.isValid).toBe(false);
     expect(result.errors).toContain('Step 1 is missing "description".');
   });
@@ -304,10 +304,10 @@ describe('validatePhaseA', () => {
         ]
       }
     };
-    const result1 = validatePhaseA(invalidData1);
+    const result1 = validatePlanning(invalidData1);
     expect(result1.isValid).toBe(false);
     expect(result1.errors).toContain('Step 1 is missing or invalid "target_files" (must be an array).');
-    const result2 = validatePhaseA(invalidData2);
+    const result2 = validatePlanning(invalidData2);
     expect(result2.isValid).toBe(false);
     expect(result2.errors).toContain('Step 1 is missing or invalid "target_files" (must be an array).');
   });
@@ -331,7 +331,7 @@ describe('validatePhaseA', () => {
         ]
       }
     };
-    const result = validatePhaseA(invalidData);
+    const result = validatePlanning(invalidData);
     expect(result.isValid).toBe(false);
     expect(result.errors).toContain('Step 1 has invalid "test_command" (must be a string if provided).');
   });
@@ -370,10 +370,10 @@ describe('validatePhaseA', () => {
         ]
       }
     };
-    const result1 = validatePhaseA(invalidData1);
+    const result1 = validatePlanning(invalidData1);
     expect(result1.isValid).toBe(false);
     expect(result1.errors).toContain('Step 1 is missing or invalid "parallelizable" (must be a boolean).');
-    const result2 = validatePhaseA(invalidData2);
+    const result2 = validatePlanning(invalidData2);
     expect(result2.isValid).toBe(false);
     expect(result2.errors).toContain('Step 1 is missing or invalid "parallelizable" (must be a boolean).');
   });
@@ -412,10 +412,10 @@ describe('validatePhaseA', () => {
         ]
       }
     };
-    const result1 = validatePhaseA(invalidData1);
+    const result1 = validatePlanning(invalidData1);
     expect(result1.isValid).toBe(false);
     expect(result1.errors).toContain('Step 1 is missing or invalid "dependencies" (must be an array).');
-    const result2 = validatePhaseA(invalidData2);
+    const result2 = validatePlanning(invalidData2);
     expect(result2.isValid).toBe(false);
     expect(result2.errors).toContain('Step 1 is missing or invalid "dependencies" (must be an array).');
   });
@@ -439,7 +439,7 @@ describe('validatePhaseA', () => {
         ]
       }
     };
-    const result = validatePhaseA(data);
+    const result = validatePlanning(data);
     expect(result.isValid).toBe(true);
     expect(result.errors).toEqual([]);
     expect(result.warnings).toContain('"requirements.specs" is empty or missing. It is recommended to have detailed specs.');
@@ -464,7 +464,7 @@ describe('validatePhaseA', () => {
         ]
       }
     };
-    const result = validatePhaseA(data);
+    const result = validatePlanning(data);
     expect(result.isValid).toBe(true);
     expect(result.errors).toEqual([]);
     expect(result.warnings).toContain('"cautions" is empty or missing. It is highly recommended to provide cautions for safety.');
@@ -497,7 +497,7 @@ describe('validatePhaseA', () => {
         }
       ]
     };
-    const result = validatePhaseA(data);
+    const result = validatePlanning(data);
     expect(result.isValid).toBe(true);
     expect(result.errors).toEqual([]);
     expect(result.warnings).toContain('Caution at index 0 is missing "context" or "instruction".');
@@ -505,13 +505,13 @@ describe('validatePhaseA', () => {
   });
 
   it('should return isValid: false and errors if data is not an object', () => {
-    const result = validatePhaseA('not an object');
+    const result = validatePlanning('not an object');
     expect(result.isValid).toBe(false);
     expect(result.errors).toContain('Parsed data is not an object.');
   });
 
   it('should return isValid: false and errors if data is null', () => {
-    const result = validatePhaseA(null);
+    const result = validatePlanning(null);
     expect(result.isValid).toBe(false);
     expect(result.errors).toContain('Parsed data is not an object.');
   });

@@ -4,7 +4,7 @@ export interface ValidationResult {
   warnings: string[];
 }
 
-export function validatePhaseA(data: any): ValidationResult {
+export function validatePlanning(data: any): ValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
 
