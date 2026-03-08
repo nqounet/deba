@@ -11,6 +11,7 @@ import { appendGrowthLog } from '../growthLog.js';
 import { saveKnowledge, Knowledge } from '../knowledge.js';
 import { getMainRepoRoot, getRepoStorageRoot, getWorktreePath, mergeWorktree, removeWorktree } from '../utils/git.js';
 import { loadConfig } from '../utils/config.js';
+import { updateTrust, getTrustData, calculateTrustLevel, getTrustLevelName } from '../trust.js';
 
 function askQuestion(query: string): Promise<string> {
   const rl = readline.createInterface({
@@ -34,8 +35,8 @@ export async function reviewCommand(taskId: string, options: { yes?: boolean, ap
 
   let originalRequest = '(不明)';
   try {
-    const phaseAInput = await fs.readFile(path.join(snapshotDir, 'phase_a_input.md'), 'utf-8');
-    originalRequest = phaseAInput.substring(0, 200) + '...';
+    const planningInput = await fs.readFile(path.join(snapshotDir, 'planning_input.md'), 'utf-8');
+    originalRequest = planningInput.substring(0, 200) + '...';
   } catch {
     try {
       const input = await fs.readFile(path.join(snapshotDir, 'input.md'), 'utf-8');
@@ -98,6 +99,14 @@ export async function reviewCommand(taskId: string, options: { yes?: boolean, ap
     userFeedback: isApproved ? 'approved' : answer.trim(),
     success: isApproved,
   });
+
+  await updateTrust(isApproved);
+  const trustData = await getTrustData();
+  const level = calculateTrustLevel(trustData);
+  const approvalRate = trustData.recentHistory.length > 0
+    ? Math.round((trustData.recentHistory.filter(v => v).length / trustData.recentHistory.length) * 100)
+    : 0;
+  console.log(`\n📊 信頼レベル: ${getTrustLevelName(level)} (直近の承認率: ${approvalRate}%)`);
 
   if (isApproved) {
     console.log(`\n✅ タスクを承認しました。エピソードを記録し、完了です。`);

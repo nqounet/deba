@@ -29,7 +29,12 @@ const DEFAULT_CONFIG: DebaConfig = {
 const CONFIG_DIR = path.join(os.homedir(), '.deba');
 const CONFIG_PATH = path.join(CONFIG_DIR, 'config.toml');
 
-export async function loadConfig(): Promise<DebaConfig> {
+let cachedConfig: DebaConfig | null = null;
+
+export async function loadConfig(forceReload = false): Promise<DebaConfig> {
+  if (cachedConfig && !forceReload) {
+    return cachedConfig;
+  }
   try {
     const content = await fs.readFile(CONFIG_PATH, 'utf-8');
     const parsed = parse(content) as any;
@@ -46,8 +51,10 @@ export async function loadConfig(): Promise<DebaConfig> {
         },
       },
     };
+    cachedConfig = config;
     return config;
   } catch (error) {
+    cachedConfig = DEFAULT_CONFIG;
     return DEFAULT_CONFIG;
   }
 }

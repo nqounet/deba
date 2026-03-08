@@ -6,6 +6,7 @@ import { searchKnowledge, formatKnowledgeForPrompt } from './knowledge.js';
 import { getMainRepoRoot, getRepoStorageRoot } from './utils/git.js';
 import { loadIngestion } from './ingestion.js';
 import { loadRecentEpisodes } from './episode.js';
+import { validateFilePaths } from './utils/sanitize.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,10 +28,10 @@ async function loadTemplate(name: string): Promise<string> {
 }
 
 /**
- * プロンプトテンプレートを読み込み、変数を注入してPhase A用プロンプトを構築する
+ * プロンプトテンプレートを読み込み、変数を注入してPlanning用プロンプトを構築する
  */
-export async function buildPhaseAPrompt(request: string, targetFilePaths: string[] = []): Promise<string> {
-  let template = await loadTemplate('phase_a');
+export async function buildPlanningPrompt(request: string, targetFilePaths: string[] = []): Promise<string> {
+  let template = await loadTemplate('planning');
 
   template = template.replace(/\{\{USER_REQUEST\}\}/g, request);
   
@@ -39,8 +40,12 @@ export async function buildPhaseAPrompt(request: string, targetFilePaths: string
 
   let targetSourceCode = '※変更対象ファイルの指定なし';
   if (targetFilePaths.length > 0) {
+    // パストラバーサル防止: プロジェクトルート外のパスをフィルタリング
+    const projectRoot = process.cwd();
+    const safePaths = validateFilePaths(targetFilePaths, projectRoot);
+    
     const fileContents: string[] = [];
-    for (const filePath of targetFilePaths) {
+    for (const filePath of safePaths) {
       try {
         const content = await fs.readFile(filePath, 'utf-8');
         fileContents.push(`--- ${filePath} ---\n${content}\n`);
@@ -84,14 +89,14 @@ export async function buildPhaseAPrompt(request: string, targetFilePaths: string
 }
 
 /**
- * Phase B (軽量モデル) 向けの指示遂行型プロンプトを構築する
+ * Execution (軽量モデル) 向けの指示遂行型プロンプトを構築する
  */
-export async function buildPhaseBPrompt(
+export async function buildExecutionPrompt(
   stepDescription: string,
   targetFileContent: string,
   cautionsFromPhaseA: any[]
 ): Promise<string> {
-  let template = await loadTemplate('phase_b');
+  let template = await loadTemplate('execution');
 
   const formattedCautions = cautionsFromPhaseA && cautionsFromPhaseA.length > 0
     ? cautionsFromPhaseA.map((c: any) => `- [${c.context}] ${c.instruction}`).join('\n')

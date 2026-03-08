@@ -1,10 +1,12 @@
+import { sanitizeTestCommand } from './utils/sanitize.js';
+
 export interface ValidationResult {
   isValid: boolean;
   errors: string[];
   warnings: string[];
 }
 
-export function validatePhaseA(data: any): ValidationResult {
+export function validatePlanning(data: any): ValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
 
@@ -63,8 +65,16 @@ export function validatePhaseA(data: any): ValidationResult {
           errors.push(`Step ${step.id ?? `at index ${index}`} is missing or invalid "target_files" (must be an array).`);
         }
 
-        if (step.test_command !== undefined && typeof step.test_command !== 'string') {
-          errors.push(`Step ${step.id ?? `at index ${index}`} has invalid "test_command" (must be a string if provided).`);
+        if (step.test_command !== undefined) {
+          if (typeof step.test_command !== 'string') {
+            errors.push(`Step ${step.id ?? `at index ${index}`} has invalid "test_command" (must be a string if provided).`);
+          } else {
+            try {
+              sanitizeTestCommand(step.test_command);
+            } catch (e: any) {
+              errors.push(`Step ${step.id ?? `at index ${index}`}: ${e.message}`);
+            }
+          }
         }
 
         if (typeof step.parallelizable !== 'boolean') {

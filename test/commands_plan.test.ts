@@ -7,7 +7,7 @@ import * as config from '../src/utils/config';
 
 vi.mock('../src/ai');
 vi.mock('../src/prompt', () => ({
-  buildPhaseAPrompt: vi.fn(),
+  buildPlanningPrompt: vi.fn(),
   buildRepairPrompt: vi.fn()
 }));
 vi.mock('../src/utils/queue');
@@ -27,7 +27,7 @@ describe('commands/plan module', () => {
 
   describe('planCommand', () => {
     it('正常系: LLMから正しいYAMLが返された場合、パースしてキューに入れること', async () => {
-      vi.mocked(prompt.buildPhaseAPrompt).mockResolvedValue('prompt text');
+      vi.mocked(prompt.buildPlanningPrompt).mockResolvedValue('prompt text');
       vi.mocked(ai.generateContent).mockResolvedValue({
         text: '```json\n{"implementation_plan": {"steps": [{"id": 1, "description": "step1", "target_files": [], "parallelizable": false, "dependencies": []}]}, "requirements": {"goal": "test", "specs": [{"item": "s1", "reasoning": "r1"}], "acceptance_criteria": ["c1"]}, "cautions": [{"context": "ctx", "instruction": "ins"}]}\n```',
         meta: {}
@@ -35,14 +35,14 @@ describe('commands/plan module', () => {
 
       await planCommand('user request', { file: [] });
 
-      expect(prompt.buildPhaseAPrompt).toHaveBeenCalledWith('user request', []);
+      expect(prompt.buildPlanningPrompt).toHaveBeenCalledWith('user request', []);
       expect(ai.generateContent).toHaveBeenCalledWith('prompt text', { provider: 'gemini', model: 'planning-model' });
       expect(queue.enqueueStep).toHaveBeenCalled();
     });
 
     it('自己修復系: 初回のYAMLが不正な場合、修復を試みること', async () => {
       vi.spyOn(console, 'warn').mockImplementation(() => {});
-      vi.mocked(prompt.buildPhaseAPrompt).mockResolvedValue('prompt');
+      vi.mocked(prompt.buildPlanningPrompt).mockResolvedValue('prompt');
       vi.mocked(prompt.buildRepairPrompt).mockResolvedValue('repair prompt');
       
       vi.mocked(ai.generateContent)
@@ -63,12 +63,14 @@ describe('commands/plan module', () => {
     it('修復失敗系: 修復後も不正な場合、エラーを表示すること', async () => {
       vi.spyOn(console, 'warn').mockImplementation(() => {});
       const mockError = vi.spyOn(console, 'error').mockImplementation(() => {});
-      vi.mocked(prompt.buildPhaseAPrompt).mockResolvedValue('prompt');
+      vi.mocked(prompt.buildPlanningPrompt).mockResolvedValue('prompt');
       vi.mocked(prompt.buildRepairPrompt).mockResolvedValue('repair prompt');
 
       vi.mocked(ai.generateContent)
         .mockResolvedValueOnce({ text: 'invalid 1', meta: {} })
-        .mockResolvedValueOnce({ text: 'invalid 2', meta: {} });
+        .mockResolvedValueOnce({ text: 'invalid 2', meta: {} })
+        .mockResolvedValueOnce({ text: 'invalid 3', meta: {} })
+        .mockResolvedValueOnce({ text: 'invalid 4', meta: {} });
 
       await planCommand('request', { file: [] });
       expect(mockError).toHaveBeenCalledWith(expect.stringContaining('Self-healing failed'));

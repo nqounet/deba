@@ -48,7 +48,7 @@ model = "gpt-3.5-turbo"
     it('設定ファイルが不正または存在しない場合、デフォルト値を返すこと', async () => {
       vi.mocked(fs.readFile).mockRejectedValue(new Error('ENOENT'));
 
-      const config = await loadConfig();
+      const config = await loadConfig(true);
       expect(config.ai.planning.provider).toBe('gemini');
       expect(config.ai.execution.provider).toBe('gemini');
     });

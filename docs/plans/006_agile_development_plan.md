@@ -9,7 +9,7 @@
 | **CLI First** | CLIインタラクティブモードで動作確認できたら次へ進む |
 | **入出力の透明性** | 全フェーズで「何を入力し、何が出力されたか」をファイルに保存し、対比可能にする |
 | **1スプリント = 1検証可能な成果物** | 各スプリントの完了時に「動かして確認できるもの」がある |
-| **手戻り最小化** | 上流（Phase A）から検証し、上流が安定してから下流に進む |
+| **手戻り最小化** | 上流（Planning）から検証し、上流が安定してから下流に進む |
 | **設計ドキュメントとの対応** | 既存の設計書（001〜005）を参照しつつ、実装は必要最小限から始める |
 | **Portable Agent** | 知識や作業場をプロジェクト内に保持し、ポータビリティを確保する |
 
@@ -33,10 +33,10 @@ snapshots/
 | Sprint | ステータス | 成果物 |
 |--------|------------|--------|
 | **Sprint 0** | ✅ 完了 | プロジェクトセットアップ, CLI最小構成, snapshots |
-| **Sprint 1** | ✅ 完了 | `deba plan` (Phase A: 計画立案) |
+| **Sprint 1** | ✅ 完了 | `deba plan` (Planning: 計画立案) |
 | **Sprint 2** | ✅ 完了 | `deba validate` (YAML検証, 依存グラフ) |
-| **Sprint 3** | ✅ 完了 | `deba execute` (Phase B: 実装実行) |
-| **Sprint 4** | ✅ 完了 | `deba run` (Phase A→B 結合, Git Worktree 隔離) |
+| **Sprint 3** | ✅ 完了 | `deba execute` (Execution: 実装実行) |
+| **Sprint 4** | ✅ 完了 | `deba run` (Planning→Execution 結合, Git Worktree 隔離) |
 | **Sprint 5** | ✅ 完了 | `deba review` (Phase C), Episode 記録, 成長ログ |
 | **Sprint 6** | 🚀 進行中 | スキル整理 (`consolidate-skills`), コンテキスト注入 |
 
@@ -44,7 +44,7 @@ snapshots/
 
 ## 2. 各スプリントの詳細（直近の進捗）
 
-### Sprint 4: Phase A → B 結合 (✅ 完了)
+### Sprint 4: Planning → B 結合 (✅ 完了)
 - **隔離環境の実装**: `.worktrees/` ディレクトリ内での Git Worktree 運用。メイン作業ディレクトリを汚さない実行環境を構築。
 - **一気通貫実行**: 計画から実装、マージまでのオートメーション。
 
@@ -54,7 +54,7 @@ snapshots/
 
 ### Sprint 6: 成長サイクル統合 (🚀 進行中)
 - **スキル自動整理**: `maintenance consolidate-skills` による、蓄積された箇条書き規約の LLM によるリファクタリング。
-- **コンテキスト注入**: 過去の学び（意味記憶）を Phase A のプロンプトに動的に注入し、再発防止を実現。
+- **コンテキスト注入**: 過去の学び（意味記憶）を Planning のプロンプトに動的に注入し、再発防止を実現。
 
 ---
 

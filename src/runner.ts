@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { generateContent } from './ai.js';
-import { buildPhaseBPrompt } from './prompt.js';
+import { buildExecutionPrompt } from './prompt.js';
 import { saveSnapshot } from './snapshot.js';
 import { StepBatch } from './dag.js';
 import { exec } from 'child_process';
@@ -63,7 +63,7 @@ export async function executeStep(step: any, cautions: any[], taskId: string, wo
     }
   }
 
-  const prompt = await buildPhaseBPrompt(step.description, targetFilesContent, cautions || []);
+  const prompt = await buildExecutionPrompt(step.description, targetFilesContent, cautions || []);
   const config = await loadConfig();
 
   const systemInstruction = "あなたは優秀なプログラマーです。プロンプトの指示に厳密に従い、変更後の完全なコードを Markdown のコードブロック形式で出力してください。";
@@ -148,7 +148,7 @@ export async function executeStep(step: any, cautions: any[], taskId: string, wo
  * 検証済みのバッチ配列を受け取り、直列（バッチ間）および並列（バッチ内）でタスクを実行する。
  */
 export async function executeBatches(batches: StepBatch[], cautions: any[], taskId: string, workingDir?: string): Promise<void> {
-  console.log('\nStarting Execution Phase (Phase B)...');
+  console.log('\nStarting Execution Phase (Execution)...');
   const completedStepIds = new Set<number>();
   const allStepIds = new Set<number>();
   batches.forEach(b => b.steps.forEach(s => allStepIds.add(s.id)));
@@ -180,11 +180,19 @@ export async function executeBatches(batches: StepBatch[], cautions: any[], task
         const result = await executeStep(step, cautions, taskId, workingDir);
         if (result.success) {
           completedStepIds.add(step.id);
+        } else {
+          console.warn(`\n⚠️ Step ${step.id} completed with success=false (e.g., AMBIGUITY).`);
         }
       });
       
-      // バッチ内のすべてのステップの実行完了を待機
-      await Promise.all(executionPromises);
+      // バッチ内のすべてのステップの実行完了を待機 (並列実行時のエラー耐性向上)
+      const results = await Promise.allSettled(executionPromises);
+      const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+
+      if (failures.length > 0) {
+        spinner.fail(`Batch ${i + 1} execution failed.`);
+        throw new Error(`Batch ${i + 1} execution failed with ${failures.length} errors. First error: ${failures[0].reason}`);
+      }
       spinner.succeed(`Batch ${i + 1} steps processed.`);
     } catch (error) {
       spinner.fail(`Batch ${i + 1} execution failed.`);
@@ -223,8 +231,18 @@ export async function executeBatches(batches: StepBatch[], cautions: any[], task
       const filteredCautions = cautions.filter((c: any) => c.context !== 'Regression Failure');
       const retryCautions = [...filteredCautions, { context: 'Regression Failure', instruction: testErrorMessage }];
 
-      const retryExecutionPromises = batch.steps.map(step => executeStep({ ...step, test_command: undefined }, retryCautions, taskId, workingDir, 1));
-      await Promise.all(retryExecutionPromises);
+      const retryExecutionPromises = batch.steps.map(async step => {
+        const result = await executeStep({ ...step, test_command: undefined }, retryCautions, taskId, workingDir, 1);
+        if (!result.success) {
+          console.warn(`\n⚠️ Retry Step ${step.id} completed with success=false.`);
+        }
+      });
+      const retryResults = await Promise.allSettled(retryExecutionPromises);
+      const retryFailures = retryResults.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+
+      if (retryFailures.length > 0) {
+        throw new Error(`Batch ${i + 1} retry failed with ${retryFailures.length} errors. First error: ${retryFailures[0].reason}`);
+      }
 
       console.log('\n--- Re-running regression test after batch repair ---');
       testResult = await executeTests(workingDir, 'npm test');

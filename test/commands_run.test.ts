@@ -48,7 +48,7 @@ describe('commands/run module', () => {
 
   describe('runCommand', () => {
     it('正常系: 設計から実行までフローが回ること', async () => {
-      vi.mocked(prompt.buildPhaseAPrompt).mockResolvedValue('prompt');
+      vi.mocked(prompt.buildPlanningPrompt).mockResolvedValue('prompt');
       vi.mocked(ai.generateContent).mockResolvedValue({
         text: '```json\n' + JSON.stringify(validPhaseA) + '\n```',
         meta: {}
@@ -56,8 +56,8 @@ describe('commands/run module', () => {
 
       await runCommand('request', {});
 
-      expect(prompt.buildPhaseAPrompt).toHaveBeenCalled();
-      expect(ai.generateContent).toHaveBeenCalledWith('prompt', { provider: 'gemini', model: 'execution-model' });
+      expect(prompt.buildPlanningPrompt).toHaveBeenCalled();
+      expect(ai.generateContent).toHaveBeenCalledWith('prompt', { provider: 'gemini', model: 'planning-model' });
     });
   });
 

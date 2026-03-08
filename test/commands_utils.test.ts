@@ -33,7 +33,7 @@ describe('commands/utils module', () => {
         implementation_plan: { steps: [{ id: 1 }] }
       };
       vi.mocked(fs.readFile).mockResolvedValue(yaml.stringify(mockYaml));
-      vi.mocked(validator.validatePhaseA).mockReturnValue({ isValid: true, errors: [], warnings: [] });
+      vi.mocked(validator.validatePlanning).mockReturnValue({ isValid: true, errors: [], warnings: [] });
       vi.mocked(dag.validateAndBuildBatches).mockReturnValue({
         isValid: true,
         batches: [{ steps: [{ id: 1, parallelizable: true }] as any }],
@@ -49,7 +49,7 @@ describe('commands/utils module', () => {
 
     it('バリデーションに失敗した場合、process.exit(1) を呼び出すこと', async () => {
       vi.mocked(fs.readFile).mockResolvedValue('invalid yaml');
-      vi.mocked(validator.validatePhaseA).mockReturnValue({ isValid: false, errors: ['error1'], warnings: [] });
+      vi.mocked(validator.validatePlanning).mockReturnValue({ isValid: false, errors: ['error1'], warnings: [] });
 
       await expect(validateCommand('test.yaml')).rejects.toThrow('exit');
       expect(mockError).toHaveBeenCalledWith(expect.stringContaining('Schema validation failed'));

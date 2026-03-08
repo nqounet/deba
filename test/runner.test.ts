@@ -44,7 +44,7 @@ describe('runner module', () => {
         execution: { provider: 'gemini', model: 'execution-model' }
       }
     } as any);
-    vi.mocked(prompt.buildPhaseBPrompt).mockReturnValue('Mock Prompt');
+    vi.mocked(prompt.buildExecutionPrompt).mockReturnValue('Mock Prompt');
     vi.mocked(snapshot.saveSnapshot).mockResolvedValue(undefined);
   });
 
