@@ -37,13 +37,34 @@ export function getQueueDirPath(status: QueueStatus): string {
  * タスクファイルをあるステータスから別のステータスへ移動する（アトミックな操作）
  */
 export async function moveTask(filename: string, from: QueueStatus, to: QueueStatus): Promise<void> {
-  const oldPath = path.join(getQueueDirPath(from), filename);
-  const newPath = path.join(getQueueDirPath(to), filename);
+  const fromDir = getQueueDirPath(from);
+  const toDir = getQueueDirPath(to);
+  const oldPath = path.join(fromDir, filename);
+  const newPath = path.join(toDir, filename);
   
   try {
+    // 移動先のディレクトリが存在することを確認
+    await fs.mkdir(toDir, { recursive: true });
     await fs.rename(oldPath, newPath);
+    // 移動後に mtime を更新（ハートビートの初期化）
+    const now = new Date();
+    await fs.utimes(newPath, now, now);
   } catch (error: any) {
-    throw new Error(`タスクの移動に失敗しました (${from} -> ${to}): ${filename} - ${error.message}`);
+    const detail = `from: ${fromDir}, to: ${toDir}, file: ${filename}`;
+    throw new Error(`タスクの移動に失敗しました (${from} -> ${to}): ${detail} - ${error.message}`);
+  }
+}
+
+/**
+ * タスクファイルの mtime を更新して、処理が継続中であることを示す（ハートビート）
+ */
+export async function touchTask(filename: string, status: QueueStatus): Promise<void> {
+  const filePath = path.join(getQueueDirPath(status), filename);
+  try {
+    const now = new Date();
+    await fs.utimes(filePath, now, now);
+  } catch (error: any) {
+    console.warn(`[Queue] Failed to touch task: ${filename} (${status}) - ${error.message}`);
   }
 }
 

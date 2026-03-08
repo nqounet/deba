@@ -17,8 +17,9 @@ export function getRemoteOriginUrl(): string {
       }
     }
     throw new Error('origin remote not found');
-  } catch (error: any) {
-    throw new Error(`Git origin remote is required to determine storage path. (Error: ${error.message})`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Git origin remote is required to determine storage path. (Error: ${message})`);
   }
 }
 
@@ -46,41 +47,55 @@ export function getRepoStorageRoot(): string {
   return storageRoot;
 }
 
+let cachedMainRepoRoot: string | null = null;
+
+/**
+ * テスト用にキャッシュをリセットする (内部用)
+ */
+export function __resetMainRepoRootCache(): void {
+  cachedMainRepoRoot = null;
+}
+
 /**
  * メインリポジトリのルートディレクトリ（本営）を確実に取得する。
- * Worktree 内から実行された場合でも、Worktree ではない「メインのワーキングツリー」のルートを返す。
- * Git 管理下でない場合は process.cwd() を返す。
  */
 export function getMainRepoRoot(): string {
+  if (cachedMainRepoRoot) return cachedMainRepoRoot;
+
   try {
     // 1. まず現在のワーキングツリーのルートを取得
     const currentToplevel = execSync('git rev-parse --show-toplevel', { encoding: 'utf8' }).trim();
     
     // 2. メインリポジトリの共通 .git ディレクトリを取得
-    // Worktree の場合、これはメインリポジトリ内の .git ディレクトリを指す
     const commonDir = execSync('git rev-parse --git-common-dir', { encoding: 'utf8' }).trim();
     const absCommonDir = path.resolve(currentToplevel, commonDir);
     
-    // 3. commonDir が ".git" で終わっている場合、その親がメインリポジトリのルート
-    // (通常、メインリポジトリでは commonDir は ".git" または絶対パスになる)
     if (absCommonDir.endsWith('.git')) {
-      return path.dirname(absCommonDir);
-    }
-    
-    // Worktree の場合、commonDir はメインリポジトリの .git フォルダ内を指す
-    // 例: /path/to/main/.git/worktrees/task_xxx
-    // この場合は、".git" という名前のディレクトリが見つかるまで親に遡る
-    let current = absCommonDir;
-    while (current !== path.dirname(current)) {
-      if (path.basename(current) === '.git') {
-        return path.dirname(current);
+      cachedMainRepoRoot = path.dirname(absCommonDir);
+    } else {
+      let current = absCommonDir;
+      while (current !== path.dirname(current)) {
+        if (path.basename(current) === '.git') {
+          cachedMainRepoRoot = path.dirname(current);
+          break;
+        }
+        current = path.dirname(current);
       }
-      current = path.dirname(current);
+      if (!cachedMainRepoRoot) cachedMainRepoRoot = currentToplevel;
     }
 
-    return currentToplevel;
+    return cachedMainRepoRoot;
   } catch (error) {
     return process.cwd();
+  }
+}
+
+/**
+ * taskId の形式を検証し、サニタイズする（英数字、アンダースコア、ハイフンのみ許可）
+ */
+function validateTaskId(taskId: string): void {
+  if (!/^[a-z0-9_\-]+$/i.test(taskId)) {
+    throw new Error(`Invalid taskId format: ${taskId}`);
   }
 }
 
@@ -88,19 +103,21 @@ export function getMainRepoRoot(): string {
  * 指定した taskId に基づく Worktree の期待されるパスを返す
  */
 export function getWorktreePath(taskId: string): string {
+  validateTaskId(taskId);
   const storageRoot = getRepoStorageRoot();
   return path.resolve(storageRoot, 'worktrees', `deba-wt-${taskId}`);
 }
 
+
 /**
- * 指定した taskId に基づいて一時的な Git Worktree を作成する
+ * 指定した taskId に基づいて一時的な Git Worktree を作成または再利用する
  */
 export function createWorktree(taskId: string): string {
   try {
     const worktreeDir = getWorktreePath(taskId);
     const branchName = `feature/${taskId}`;
 
-    console.log(`\n--- Creating Git Worktree for isolation ---`);
+    console.log(`\n--- Git Worktree for isolation ---`);
     console.log(`Directory: ${worktreeDir}`);
     console.log(`Branch: ${branchName}`);
 
@@ -110,11 +127,29 @@ export function createWorktree(taskId: string): string {
       fs.mkdirSync(worktreesBase, { recursive: true });
     }
 
-    // 既存の worktree や branch があれば削除（念のため）
-    try { execSync(`git worktree remove ${worktreeDir} --force`, { stdio: 'ignore' }); } catch {}
-    try { execSync(`git branch -D ${branchName}`, { stdio: 'ignore' }); } catch {}
+    // 既に正しいブランチで Worktree が存在するか確認
+    let reuseExisting = false;
+    try {
+      const porcelain = execSync('git worktree list --porcelain', { encoding: 'utf8' });
+      const worktrees = porcelain.split('\n\n');
+      for (const wtInfo of worktrees) {
+        if (wtInfo.includes(`worktree ${worktreeDir}`) && wtInfo.includes(`branch refs/heads/${branchName}`)) {
+          reuseExisting = true;
+          break;
+        }
+      }
+    } catch {}
 
-    execSync(`git worktree add -b ${branchName} ${worktreeDir}`, { stdio: 'inherit' });
+    if (reuseExisting) {
+      console.log(`✅ Reusing existing worktree at ${worktreeDir}`);
+    } else {
+      // 既存の worktree や branch があれば削除（念のため）
+      try { execSync(`git worktree remove ${worktreeDir} --force`, { stdio: 'ignore' }); } catch {}
+      try { execSync(`git branch -D ${branchName}`, { stdio: 'ignore' }); } catch {}
+
+      console.log(`Creating new worktree...`);
+      execSync(`git worktree add -b ${branchName} ${worktreeDir}`, { stdio: 'inherit' });
+    }
 
     // node_modules をメインリポジトリからシンボリックリンクする
     const mainRoot = getMainRepoRoot();
@@ -122,17 +157,60 @@ export function createWorktree(taskId: string): string {
     const wtNodeModules = path.join(worktreeDir, 'node_modules');
     
     if (fs.existsSync(mainNodeModules)) {
-      console.log(`Linking node_modules from ${mainNodeModules} to ${wtNodeModules}`);
-      // 既存の（空の）ディレクトリがあれば削除
-      if (fs.existsSync(wtNodeModules) && fs.lstatSync(wtNodeModules).isDirectory()) {
-        fs.rmSync(wtNodeModules, { recursive: true, force: true });
+      if (!fs.existsSync(wtNodeModules)) {
+        console.log(`Linking node_modules from ${mainNodeModules} to ${wtNodeModules}`);
+        // 既存の（空の）ディレクトリがあれば削除
+        if (fs.existsSync(wtNodeModules) && fs.lstatSync(wtNodeModules).isDirectory()) {
+          fs.rmSync(wtNodeModules, { recursive: true, force: true });
+        }
+        fs.symlinkSync(mainNodeModules, wtNodeModules, 'dir');
       }
-      fs.symlinkSync(mainNodeModules, wtNodeModules, 'dir');
     }
 
+    // 環境ファイルなどの同期
+    syncEnvironmentFiles(mainRoot, worktreeDir);
+
     return worktreeDir;
-  } catch (error: any) {
-    throw new Error(`Failed to create git worktree: ${error.message}`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to create or reuse git worktree: ${message}`);
+  }
+}
+
+/**
+ * .env や mise.toml などの非管理ファイルをメインから Worktree へ同期する
+ */
+function syncEnvironmentFiles(srcDir: string, destDir: string): void {
+  const filesToSync = [
+    '.env',
+    '.env.local',
+    '.env.development',
+    '.env.test',
+    'mise.toml',
+    '.tool-versions',
+    'package-lock.json', // 依存関係の整合性のため
+  ];
+
+  for (const file of filesToSync) {
+    const srcPath = path.join(srcDir, file);
+    const destPath = path.join(destDir, file);
+
+    if (fs.existsSync(srcPath)) {
+      try {
+        // ディレクトリの場合は再帰的にコピー、ファイルの場合は普通にコピー
+        if (fs.lstatSync(srcPath).isDirectory()) {
+          // 今回はファイルのみを想定
+          continue;
+        }
+        
+        // 既に存在して内容が同じならスキップしても良いが、簡略化のため常にコピー
+        fs.copyFileSync(srcPath, destPath);
+        // console.log(`Synced: ${file}`);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.warn(`⚠️ Failed to sync ${file}: ${message}`);
+      }
+    }
   }
 }
 
@@ -187,8 +265,10 @@ export function mergeWorktree(taskId: string): void {
       console.log(`Committing changes in worktree: ${worktreeDir}`);
       execSync(`git add .`, { cwd: worktreeDir });
       execSync(`git commit -m "Deba task execution: ${taskId}"`, { cwd: worktreeDir, stdio: 'ignore' });
-    } catch {
+    } catch (error: unknown) {
       // 変更がない場合はコミットが失敗するが、そのまま進む
+      const message = error instanceof Error ? error.message : String(error);
+      console.debug(`[Git] Commit skipped or failed in worktree (possibly no changes): ${message}`);
     }
 
     // 2. メインリポジトリ側で squash merge を実行
@@ -196,8 +276,9 @@ export function mergeWorktree(taskId: string): void {
     execSync(`git merge --squash ${branchName}`, { stdio: 'inherit' });
     
     console.log(`✅ Git merge --squash completed.`);
-  } catch (error: any) {
-    throw new Error(`Failed to merge changes via Git: ${error.message}`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to merge changes via Git: ${message}`);
   }
 }
 
@@ -211,7 +292,8 @@ export function removeWorktree(worktreeDir: string, taskId: string): void {
     execSync(`git worktree remove ${worktreeDir} --force`, { stdio: 'inherit' });
     execSync(`git branch -D ${branchName}`, { stdio: 'inherit' });
     console.log(`✅ Worktree and branch ${branchName} removed.`);
-  } catch (error: any) {
-    console.warn(`⚠️ Failed to remove worktree or branch: ${error.message}`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`⚠️ Failed to remove worktree or branch: ${message}`);
   }
 }

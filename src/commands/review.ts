@@ -54,7 +54,27 @@ export async function reviewCommand(taskId: string, options: { yes?: boolean, ap
 
   console.log(`\n--- Review Task: ${taskId} ---`);
   console.log(`Steps executed: ${stepsExecuted.join(', ') || 'N/A'}`);
-  console.log(`\nCheck snapshots/${taskId}/ for detailed inputs/outputs.\n`);
+  
+  // Worktree が存在すれば diff を表示
+  const worktreeDir = getWorktreePath(taskId);
+  try {
+    await fs.access(worktreeDir);
+    console.log(`\n--- Git Diff from Worktree ---`);
+    const { execSync } = await import('child_process');
+    try {
+      const diff = execSync('git diff HEAD', { cwd: worktreeDir, encoding: 'utf-8' });
+      if (diff.trim()) {
+        console.log(diff);
+      } else {
+        console.log('(No changes detected in Git)');
+      }
+    } catch (e: any) {
+      console.warn(`⚠️ Could not get git diff: ${e.message}`);
+    }
+    console.log(`------------------------------\n`);
+  } catch {
+    console.log(`\nCheck snapshots/${taskId}/ for detailed inputs/outputs.\n`);
+  }
 
   let answer = '';
   let isApproved = false;

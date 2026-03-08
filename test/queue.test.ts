@@ -65,7 +65,7 @@ describe('queue utils', () => {
     it('renameが失敗した場合はカスタムエラーメッセージでエラーを投げること', async () => {
       vi.mocked(fs.rename).mockRejectedValueOnce(new Error('ENOENT'));
       await expect(moveTask('task_1.json', 'todo', 'doing'))
-        .rejects.toThrow('タスクの移動に失敗しました (todo -> doing): task_1.json - ENOENT');
+        .rejects.toThrow(/タスクの移動に失敗しました \(todo -> doing\): from:.*, to:.*, file: task_1.json - ENOENT/);
     });
   });
 
