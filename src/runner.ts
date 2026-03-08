@@ -52,8 +52,9 @@ export async function executeStep(step: any, cautions: any[], taskId: string, wo
       try {
          const absPath = path.resolve(baseDir, filepath);
          content = await fs.readFile(absPath, 'utf-8');
-      } catch (e: any) {
-         console.warn(`⚠️ Could not read file ${filepath}: ${e.message}`);
+      } catch (e: unknown) {
+         const message = e instanceof Error ? e.message : String(e);
+         console.warn(`⚠️ Could not read file ${filepath}: ${message}`);
          content = '（新規作成）';
       }
       targetFilesContent += `\n### File: ${filepath}\n${content}\n`;
@@ -102,7 +103,13 @@ export async function executeStep(step: any, cautions: any[], taskId: string, wo
     }
 
     if (filePath) {
-      fileChanges.push({ path: filePath, content });
+      // パスラベルトラバーサル対策: パスを正規化し、ベースディレクトリを越えていないか確認
+      const normalizedPath = path.normalize(filePath);
+      if (normalizedPath.startsWith('..') || path.isAbsolute(normalizedPath)) {
+        console.warn(`⚠️ Security warning: Blocked attempt to modify file outside working directory: ${filePath}`);
+        continue;
+      }
+      fileChanges.push({ path: normalizedPath, content });
     }
   }
 
@@ -132,8 +139,9 @@ export async function executeStep(step: any, cautions: any[], taskId: string, wo
       } catch {
         // Git 管理下でない場合は無視
       }
-    } catch (e: any) {
-      console.error(`❌ Failed to write file ${change.path}: ${e.message}`);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      console.error(`❌ Failed to write file ${change.path}: ${message}`);
     }
   }
 
@@ -149,8 +157,9 @@ export async function executeStep(step: any, cautions: any[], taskId: string, wo
     // テスト失敗時のリトライ (TDD Loop)
     if (testResult.code !== 0) {
       if (retryCount >= MAX_RETRIES) {
+        const detail = testResult.stderr || testResult.stdout;
         console.error(`\n❌ Step ${step.id} test failed and max retries (${MAX_RETRIES}) reached. Halting.`);
-        throw new Error(`Step ${step.id} test failed after ${MAX_RETRIES} retries.\nDetails:\n${testResult.stderr || testResult.stdout}`);
+        throw new Error(`Step ${step.id} test failed after ${MAX_RETRIES} retries.\nDetails:\n${detail}`);
       }
       
       console.log(`\n❌ Step ${step.id} test failed. Attempting self-repair (Attempt ${retryCount + 1}/${MAX_RETRIES})...`);

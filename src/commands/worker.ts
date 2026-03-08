@@ -8,6 +8,9 @@ import { generateContent } from '../ai.js';
 import { extractAndParseYaml } from '../yamlParser.js';
 
 const PROPOSALS_DIR = path.join(getRepoStorageRoot(), 'brain', 'skills', 'proposals');
+const STALE_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
+const HEARTBEAT_INTERVAL_MS = 60 * 1000; // 1 minute
+const POLL_INTERVAL_MS = 3000; // 3 seconds
 
 import { loadConfig } from '../utils/config.js';
 
@@ -35,8 +38,9 @@ async function suggestSkillFromSuccess(taskDescription: string, taskResult: stri
       
       console.log(`[Worker] ✨ 新しいスキル候補を提案しました: ${filename}`);
     }
-  } catch (error: any) {
-    console.warn(`[Worker] スキル抽出に失敗しました（スキップします）: ${error.message}`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`[Worker] スキル抽出に失敗しました（スキップします）: ${message}`);
   }
 }
 
@@ -48,24 +52,25 @@ async function recoverStaleTasks() {
   try {
     const files = await fs.readdir(doingDir);
     const now = Date.now();
-    const STALE_THRESHOLD = 10 * 60 * 1000; // 10 minutes
 
     for (const filename of files) {
       if (!filename.endsWith('.json')) continue;
       const filePath = path.join(doingDir, filename);
       const stats = await fs.stat(filePath);
       
-      if (now - stats.mtimeMs > STALE_THRESHOLD) {
+      if (now - stats.mtimeMs > STALE_THRESHOLD_MS) {
         console.log(`[Worker] 🛠️ 停滞しているタスクを復旧しています (10分以上更新なし): ${filename}`);
         try {
           await moveTask(filename, 'doing', 'todo');
-        } catch (error: any) {
-          console.error(`[Worker] タスクの復旧に失敗しました: ${filename} - ${error.message}`);
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : String(error);
+          console.error(`[Worker] タスクの復旧に失敗しました: ${filename} - ${message}`);
         }
       }
     }
-  } catch (error) {
-    // ディレクトリがない場合は無視
+  } catch (error: unknown) {
+    // ディレクトリが存在しないなどのエラーは無視しても問題ないが、一応警告
+    console.debug(`[Worker] No tasks to recover or error reading queue: ${error}`);
   }
 }
 
@@ -90,7 +95,7 @@ export async function workerCommand(options: { once?: boolean } = {}) {
       if (taskFiles.length === 0) {
         if (options.once) break;
         // タスクがなければ少し待機
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
         continue;
       }
       
@@ -110,10 +115,10 @@ export async function workerCommand(options: { once?: boolean } = {}) {
           // Worktree の準備
           const worktreeDir = createWorktree(taskId);
           
-          // ハートビート開始（1分ごとに更新）
+          // ハートビート開始（定期的に更新）
           const heartbeat = setInterval(async () => {
             await touchTask(filename, 'doing');
-          }, 60000);
+          }, HEARTBEAT_INTERVAL_MS);
 
           try {
             // ステップの実行
@@ -133,12 +138,14 @@ export async function workerCommand(options: { once?: boolean } = {}) {
             clearInterval(heartbeat);
           }
           
-        } catch (error: any) {
-          console.error(`[Worker] ❌ Task failed: ${filename} - ${error.message}`);
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : String(error);
+          console.error(`[Worker] ❌ Task failed: ${filename} - ${message}`);
           try {
             await moveTask(filename, 'doing', 'failed');
-          } catch (moveError: any) {
-            console.error(`[Worker] Critical: Failed to move to failed queue: ${moveError.message}`);
+          } catch (moveError: unknown) {
+            const moveMsg = moveError instanceof Error ? moveError.message : String(moveError);
+            console.error(`[Worker] Critical: Failed to move to failed queue: ${moveMsg}`);
           }
         }
       }
@@ -146,8 +153,9 @@ export async function workerCommand(options: { once?: boolean } = {}) {
       if (options.once) break;
     }
     
-  } catch (error: any) {
-    console.error(`❌ Workerで致命的なエラーが発生しました: ${error.message}`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`❌ Workerで致命的なエラーが発生しました: ${message}`);
     process.exit(1);
   }
 }

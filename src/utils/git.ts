@@ -17,8 +17,9 @@ export function getRemoteOriginUrl(): string {
       }
     }
     throw new Error('origin remote not found');
-  } catch (error: any) {
-    throw new Error(`Git origin remote is required to determine storage path. (Error: ${error.message})`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Git origin remote is required to determine storage path. (Error: ${message})`);
   }
 }
 
@@ -90,12 +91,23 @@ export function getMainRepoRoot(): string {
 }
 
 /**
+ * taskId の形式を検証し、サニタイズする（英数字、アンダースコア、ハイフンのみ許可）
+ */
+function validateTaskId(taskId: string): void {
+  if (!/^[a-z0-9_\-]+$/i.test(taskId)) {
+    throw new Error(`Invalid taskId format: ${taskId}`);
+  }
+}
+
+/**
  * 指定した taskId に基づく Worktree の期待されるパスを返す
  */
 export function getWorktreePath(taskId: string): string {
+  validateTaskId(taskId);
   const storageRoot = getRepoStorageRoot();
   return path.resolve(storageRoot, 'worktrees', `deba-wt-${taskId}`);
 }
+
 
 /**
  * 指定した taskId に基づいて一時的な Git Worktree を作成または再利用する
@@ -159,8 +171,9 @@ export function createWorktree(taskId: string): string {
     syncEnvironmentFiles(mainRoot, worktreeDir);
 
     return worktreeDir;
-  } catch (error: any) {
-    throw new Error(`Failed to create or reuse git worktree: ${error.message}`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to create or reuse git worktree: ${message}`);
   }
 }
 
@@ -193,8 +206,9 @@ function syncEnvironmentFiles(srcDir: string, destDir: string): void {
         // 既に存在して内容が同じならスキップしても良いが、簡略化のため常にコピー
         fs.copyFileSync(srcPath, destPath);
         // console.log(`Synced: ${file}`);
-      } catch (error: any) {
-        console.warn(`⚠️ Failed to sync ${file}: ${error.message}`);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.warn(`⚠️ Failed to sync ${file}: ${message}`);
       }
     }
   }
@@ -251,8 +265,10 @@ export function mergeWorktree(taskId: string): void {
       console.log(`Committing changes in worktree: ${worktreeDir}`);
       execSync(`git add .`, { cwd: worktreeDir });
       execSync(`git commit -m "Deba task execution: ${taskId}"`, { cwd: worktreeDir, stdio: 'ignore' });
-    } catch {
+    } catch (error: unknown) {
       // 変更がない場合はコミットが失敗するが、そのまま進む
+      const message = error instanceof Error ? error.message : String(error);
+      console.debug(`[Git] Commit skipped or failed in worktree (possibly no changes): ${message}`);
     }
 
     // 2. メインリポジトリ側で squash merge を実行
@@ -260,8 +276,9 @@ export function mergeWorktree(taskId: string): void {
     execSync(`git merge --squash ${branchName}`, { stdio: 'inherit' });
     
     console.log(`✅ Git merge --squash completed.`);
-  } catch (error: any) {
-    throw new Error(`Failed to merge changes via Git: ${error.message}`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to merge changes via Git: ${message}`);
   }
 }
 
@@ -275,7 +292,8 @@ export function removeWorktree(worktreeDir: string, taskId: string): void {
     execSync(`git worktree remove ${worktreeDir} --force`, { stdio: 'inherit' });
     execSync(`git branch -D ${branchName}`, { stdio: 'inherit' });
     console.log(`✅ Worktree and branch ${branchName} removed.`);
-  } catch (error: any) {
-    console.warn(`⚠️ Failed to remove worktree or branch: ${error.message}`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`⚠️ Failed to remove worktree or branch: ${message}`);
   }
 }
