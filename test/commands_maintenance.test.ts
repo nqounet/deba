@@ -36,6 +36,12 @@ describe('commands/maintenance module', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(configUtils.loadConfig).mockResolvedValue({
+      ai: {
+        planning: { provider: 'gemini', model: 'planning' },
+        execution: { provider: 'gemini', model: 'execution' }
+      }
+    } as any);
   });
 
   it('installCommand: セットアップを順次実行すること', async () => {

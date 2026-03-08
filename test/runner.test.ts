@@ -38,8 +38,11 @@ describe('runner module', () => {
     
     // 共通のモック戻り値を設定
     vi.mocked(config.loadConfig).mockResolvedValue({
-      ai: { flash_model: 'gemini-test-flash' }
-    });
+      ai: {
+        planning: { provider: 'gemini', model: 'planning-model' },
+        execution: { provider: 'gemini', model: 'execution-model' }
+      }
+    } as any);
     vi.mocked(prompt.buildPhaseBPrompt).mockReturnValue('Mock Prompt');
     vi.mocked(snapshot.saveSnapshot).mockResolvedValue(undefined);
   });

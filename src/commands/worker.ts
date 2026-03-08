@@ -19,7 +19,7 @@ async function suggestSkillFromSuccess(taskDescription: string, taskResult: stri
   try {
     const prompt = await buildSkillSuggestionPrompt(taskDescription, taskResult);
     const config = await loadConfig();
-    const { text } = await generateContent(prompt, config.ai.flash_model);
+    const { text } = await generateContent(prompt, config.ai.execution);
     
     const { parsedObject } = extractAndParseYaml(text);
     if (parsedObject && parsedObject.skill) {

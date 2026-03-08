@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as fs from 'fs/promises';
-import * as path from 'path';
 import { reviewCommand } from '../src/commands/review';
 import * as gitUtils from '../src/utils/git';
 import * as episode from '../src/episode';
@@ -26,12 +25,14 @@ vi.mock('../src/knowledge');
 vi.mock('../src/utils/config');
 
 describe('commands/review module', () => {
-  const mockLog = vi.spyOn(console, 'log').mockImplementation(() => {});
-  const mockWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  const mockAiConfig = {
+    planning: { provider: 'gemini', model: 'planning-model' },
+    execution: { provider: 'gemini', model: 'execution-model' }
+  } as const;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(configUtils.loadConfig).mockResolvedValue({ ai: { flash_model: 'flash' } } as any);
+    vi.mocked(configUtils.loadConfig).mockResolvedValue({ ai: mockAiConfig } as any);
   });
 
   it('承認時: エピソードを保存し、Worktreeをマージ・削除すること', async () => {
@@ -58,7 +59,7 @@ describe('commands/review module', () => {
     await reviewCommand('task2', { approve: false, message: 'needs fix' });
 
     expect(episode.saveEpisode).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
-    expect(ai.generateContent).toHaveBeenCalled();
+    expect(ai.generateContent).toHaveBeenCalledWith(expect.any(String), mockAiConfig.execution, expect.any(String));
     expect(growthLog.appendGrowthLog).toHaveBeenCalled();
     expect(knowledge.saveKnowledge).toHaveBeenCalled();
   });

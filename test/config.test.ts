@@ -28,23 +28,29 @@ describe('utils/config module', () => {
   describe('loadConfig', () => {
     it('設定ファイルが存在する場合、パースして返すこと', async () => {
       const tomlContent = `
-[ai]
+[ai.planning]
 provider = "gemini"
 model = "gpt-4"
+
+[ai.execution]
+provider = "codex"
+model = "gpt-3.5-turbo"
 `;
       vi.mocked(fs.readFile).mockResolvedValue(tomlContent);
 
       const config = await loadConfig();
-      expect(config.ai.provider).toBe('gemini');
-      expect(config.ai.model).toBe('gpt-4');
+      expect(config.ai.planning.provider).toBe('gemini');
+      expect(config.ai.planning.model).toBe('gpt-4');
+      expect(config.ai.execution.provider).toBe('codex');
+      expect(config.ai.execution.model).toBe('gpt-3.5-turbo');
     });
 
     it('設定ファイルが不正または存在しない場合、デフォルト値を返すこと', async () => {
       vi.mocked(fs.readFile).mockRejectedValue(new Error('ENOENT'));
 
       const config = await loadConfig();
-      expect(config.ai.provider).toBe('gemini');
-      expect(config.ai.model).toBeUndefined();
+      expect(config.ai.planning.provider).toBe('gemini');
+      expect(config.ai.execution.provider).toBe('gemini');
     });
   });
 

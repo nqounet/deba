@@ -10,6 +10,7 @@ import { executeBatches } from '../runner.js';
 import { listSkills as listSkillsInfo } from '../skills.js';
 import { createWorktree } from '../utils/git.js';
 import { moveAllSteps } from '../utils/queue.js';
+import { loadConfig } from '../utils/config.js';
 
 export async function runCommand(request: string, options: { file?: string[] }) {
   const taskId = generateTaskId();
@@ -22,8 +23,9 @@ export async function runCommand(request: string, options: { file?: string[] }) 
 
   console.log(`\n--- Phase A (Plan) ---`);
   const prompt = await buildPhaseAPrompt(request, options.file);
+  const config = await loadConfig();
   
-  const { text, meta } = await generateContent(prompt);
+  const { text, meta } = await generateContent(prompt, config.ai.execution);
   
   console.log('Extracting and parsing YAML...');
   let { yamlRaw, parsedObject, error } = extractAndParseYaml(text);
@@ -36,7 +38,7 @@ export async function runCommand(request: string, options: { file?: string[] }) 
     console.log('Attempting self-healing (retry 1/1)...');
     
     const repairPrompt = await buildRepairPrompt(errorDetail);
-    const { text: repairedText } = await generateContent(repairPrompt);
+    const { text: repairedText } = await generateContent(repairPrompt, config.ai.execution);
     
     const repairResult = extractAndParseYaml(repairedText);
     if (!repairResult.error && repairResult.parsedObject && typeof repairResult.parsedObject === 'object' && validatePhaseA(repairResult.parsedObject).isValid) {

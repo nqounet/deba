@@ -1,16 +1,24 @@
 import { spawn } from 'child_process';
-import { loadConfig } from './utils/config.js';
 import { spinner } from './utils/spinner.js';
+import { AIConfig } from './utils/config.js';
 
+/**
+ * AI CLI (gemini or codex) を呼び出してコンテンツを生成する。
+ * SOLIDの原則（依存性逆転）に基づき、設定の読み込み自体は呼び出し側で行う。
+ * 
+ * @param prompt ユーザープロンプト
+ * @param aiConfig AIプロバイダーとモデルの設定
+ * @param systemInstruction システム指示（オプション）
+ * @param options その他オプション
+ */
 export async function generateContent(
   prompt: string,
-  model?: string,
+  aiConfig: AIConfig,
   systemInstruction?: string,
   options: { silent?: boolean } = {}
 ): Promise<{ text: string; meta: any }> {
-  const config = await loadConfig();
-  const provider = config.ai.provider || 'gemini';
-  let selectedModel = model || config.ai.model;
+  const provider = aiConfig.provider || 'gemini';
+  const selectedModel = aiConfig.model;
 
   if (!options.silent) {
     spinner.start(`Requesting ${provider}${selectedModel ? ` (${selectedModel})` : ''}...`);

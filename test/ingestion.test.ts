@@ -5,11 +5,13 @@ import * as fs from 'fs/promises';
 import * as prompt from '../src/prompt';
 import { execSync } from 'child_process';
 import * as gitUtils from '../src/utils/git';
+import * as configUtils from '../src/utils/config';
 
 vi.mock('../src/ai');
 vi.mock('fs/promises');
 vi.mock('child_process');
 vi.mock('../src/utils/git');
+vi.mock('../src/utils/config');
 vi.mock('../src/prompt', () => ({
   buildIngestionPrompt: vi.fn().mockResolvedValue('ingestion prompt content')
 }));
@@ -19,6 +21,12 @@ describe('ingestion module', () => {
     vi.clearAllMocks();
     vi.mocked(gitUtils.getMainRepoRoot).mockReturnValue('/mock/root');
     vi.mocked(gitUtils.getRepoStorageRoot).mockReturnValue('/mock/storage');
+    vi.mocked(configUtils.loadConfig).mockResolvedValue({
+      ai: {
+        planning: { provider: 'gemini', model: 'planning-model' },
+        execution: { provider: 'gemini', model: 'execution-model' }
+      }
+    } as any);
   });
 
   describe('performIngestion', () => {
@@ -31,7 +39,7 @@ describe('ingestion module', () => {
 
       expect(result).toBe('# Ingestion Result');
       expect(prompt.buildIngestionPrompt).toHaveBeenCalled();
-      expect(ai.generateContent).toHaveBeenCalledWith('ingestion prompt content');
+      expect(ai.generateContent).toHaveBeenCalledWith('ingestion prompt content', { provider: 'gemini', model: 'execution-model' });
     });
 
     it('Git管理下でない場合にフォールバックすること', async () => {

@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { generateContent } from '../src/ai.js';
 import { spawn } from 'child_process';
-import { loadConfig } from '../src/utils/config.js';
 
 vi.mock('child_process', () => ({
   spawn: vi.fn(),
@@ -26,19 +25,9 @@ vi.mock('ora', () => ({
   }))
 }));
 
-vi.mock('../src/utils/config.js', () => ({
-  loadConfig: vi.fn()
-}));
-
 describe('generateContent', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(loadConfig).mockResolvedValue({
-      ai: {
-        provider: 'gemini',
-        model: 'gemini-test-model'
-      }
-    });
   });
 
   const createMockProcess = (stdoutData: string, stderrData: string, exitCode: number) => {
@@ -70,11 +59,13 @@ describe('generateContent', () => {
     return mockProcess;
   };
 
+  const mockAiConfig = { provider: 'gemini', model: 'gemini-test-model' } as const;
+
   it('Gemini CLIを呼び出し、JSONの出力をパースして返すこと', async () => {
     const mockProcess = createMockProcess('{"response": "Valid JSON Response", "usage": {"totalTokens": 100}}', '', 0);
     vi.mocked(spawn).mockReturnValue(mockProcess as any);
 
-    const result = await generateContent('Test prompt');
+    const result = await generateContent('Test prompt', mockAiConfig);
 
     expect(spawn).toHaveBeenCalledWith('gemini', ['-o', 'json', '-m', 'gemini-test-model']);
     expect(mockProcess.stdin.write).toHaveBeenCalledWith('Test prompt');
@@ -87,21 +78,18 @@ describe('generateContent', () => {
     const mockProcess = createMockProcess('{"response": "Response"}', '', 0);
     vi.mocked(spawn).mockReturnValue(mockProcess as any);
 
-    await generateContent('Test prompt', undefined, 'System instruction');
+    await generateContent('Test prompt', mockAiConfig, 'System instruction');
 
     expect(mockProcess.stdin.write).toHaveBeenCalledWith('System instruction\n\n---\n\nTest prompt');
   });
 
   it('Codex CLIが指定された場合、正しい引数で呼び出し、JSONLをパースすること', async () => {
-    vi.mocked(loadConfig).mockResolvedValue({
-      ai: { provider: 'codex', model: 'codex-model' }
-    });
-
+    const codexConfig = { provider: 'codex', model: 'codex-model' } as const;
     const codexOutput = `{"type": "turn.completed", "usage": {"tokens": 50}}\n{"type": "item.completed", "item": {"type": "agent_message", "text": "Codex Response"}}`;
     const mockProcess = createMockProcess(codexOutput, '', 0);
     vi.mocked(spawn).mockReturnValue(mockProcess as any);
 
-    const result = await generateContent('Test prompt');
+    const result = await generateContent('Test prompt', codexConfig);
 
     expect(spawn).toHaveBeenCalledWith('codex', ['exec', '-', '--json', '--dangerously-bypass-approvals-and-sandbox', '-m', 'codex-model']);
     expect(result.text).toBe('Codex Response');
@@ -113,7 +101,7 @@ describe('generateContent', () => {
     const mockProcess = createMockProcess('', 'Error occurred in CLI', 1);
     vi.mocked(spawn).mockReturnValue(mockProcess as any);
 
-    await expect(generateContent('Test prompt')).rejects.toThrow('gemini CLI failed with exit code 1\nstderr: Error occurred in CLI');
+    await expect(generateContent('Test prompt', mockAiConfig)).rejects.toThrow('gemini CLI failed with exit code 1\nstderr: Error occurred in CLI');
   });
 
   it('プロセスの起動自体に失敗（errorイベント）した場合、エラーを投げること', async () => {
@@ -129,7 +117,7 @@ describe('generateContent', () => {
     };
     vi.mocked(spawn).mockReturnValue(mockProcess as any);
 
-    await expect(generateContent('Test prompt')).rejects.toThrow('gemini CLI execution failed: Spawn ENOENT');
+    await expect(generateContent('Test prompt', mockAiConfig)).rejects.toThrow('gemini CLI execution failed: Spawn ENOENT');
   });
 
   it('JSONのパースに失敗した場合は、生の出力をフォールバックとして返すこと', async () => {
@@ -138,7 +126,7 @@ describe('generateContent', () => {
     const mockProcess = createMockProcess(rawOutput, '', 0);
     vi.mocked(spawn).mockReturnValue(mockProcess as any);
 
-    const result = await generateContent('Test prompt');
+    const result = await generateContent('Test prompt', mockAiConfig);
 
     expect(result.text).toBe('This is just raw text response without JSON format');
   });

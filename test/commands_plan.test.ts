@@ -18,7 +18,10 @@ describe('commands/plan module', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(config.loadConfig).mockResolvedValue({
-      ai: { model: 'main-model', flash_model: 'flash-model' }
+      ai: {
+        planning: { provider: 'gemini', model: 'planning-model' },
+        execution: { provider: 'gemini', model: 'execution-model' }
+      }
     } as any);
   });
 
@@ -33,7 +36,7 @@ describe('commands/plan module', () => {
       await planCommand('user request', { file: [] });
 
       expect(prompt.buildPhaseAPrompt).toHaveBeenCalledWith('user request', []);
-      expect(ai.generateContent).toHaveBeenCalledWith('prompt text', 'main-model');
+      expect(ai.generateContent).toHaveBeenCalledWith('prompt text', { provider: 'gemini', model: 'planning-model' });
       expect(queue.enqueueStep).toHaveBeenCalled();
     });
 
@@ -52,7 +55,8 @@ describe('commands/plan module', () => {
       await planCommand('request', { file: [] });
 
       expect(prompt.buildRepairPrompt).toHaveBeenCalled();
-      expect(ai.generateContent).toHaveBeenCalledWith('repair prompt', 'flash-model');
+      expect(ai.generateContent).toHaveBeenCalledWith('prompt', { provider: 'gemini', model: 'planning-model' });
+      expect(ai.generateContent).toHaveBeenCalledWith('repair prompt', { provider: 'gemini', model: 'execution-model' });
       expect(queue.enqueueStep).toHaveBeenCalled();
     });
 

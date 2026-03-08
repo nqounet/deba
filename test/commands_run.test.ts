@@ -3,11 +3,13 @@ import { runCommand, runPlanCommand } from '../src/commands/run';
 import * as ai from '../src/ai';
 import * as prompt from '../src/prompt';
 import * as fs from 'fs/promises';
+import * as configUtils from '../src/utils/config';
 
 vi.mock('../src/ai');
 vi.mock('../src/prompt');
 vi.mock('fs/promises');
 vi.mock('../src/snapshot');
+vi.mock('../src/utils/config');
 vi.mock('../src/dag', () => ({
   validateAndBuildBatches: vi.fn().mockReturnValue({ isValid: true, batches: [], errors: [] })
 }));
@@ -36,6 +38,12 @@ const validPhaseA = {
 describe('commands/run module', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(configUtils.loadConfig).mockResolvedValue({
+      ai: {
+        planning: { provider: 'gemini', model: 'planning-model' },
+        execution: { provider: 'gemini', model: 'execution-model' }
+      }
+    } as any);
   });
 
   describe('runCommand', () => {
@@ -49,7 +57,7 @@ describe('commands/run module', () => {
       await runCommand('request', {});
 
       expect(prompt.buildPhaseAPrompt).toHaveBeenCalled();
-      expect(ai.generateContent).toHaveBeenCalled();
+      expect(ai.generateContent).toHaveBeenCalledWith('prompt', { provider: 'gemini', model: 'execution-model' });
     });
   });
 

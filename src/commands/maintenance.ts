@@ -7,7 +7,7 @@ import { cleanWorktrees, getMainRepoRoot, getRepoStorageRoot } from '../utils/gi
 import { cleanSnapshots } from '../utils/clean.js';
 import { getPendingLearnings, markAsApproved } from '../growthLog.js';
 import { generateContent } from '../ai.js';
-import { initConfig } from '../utils/config.js';
+import { initConfig, loadConfig } from '../utils/config.js';
 import { buildMaintenancePrompt } from '../prompt.js';
 
 const PROPOSALS_DIR = path.join(getRepoStorageRoot(), 'brain', 'skills', 'proposals');
@@ -199,8 +199,9 @@ export async function consolidateSkillsCommand() {
       const originalContent = await fs.readFile(filePath, 'utf-8');
       
       const prompt = await buildMaintenancePrompt(originalContent);
+      const config = await loadConfig();
 
-      const consolidatedContent = await generateContent(prompt);
+      const consolidatedContent = await generateContent(prompt, config.ai.execution);
       
       await fs.writeFile(filePath, consolidatedContent.text);
       console.log(`✅ ${filePath} をリファクタリングし、上書き保存しました。`);

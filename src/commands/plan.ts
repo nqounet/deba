@@ -8,7 +8,8 @@ import { initQueueDirs, enqueueStep } from '../utils/queue.js';
 import { loadConfig } from '../utils/config.js';
 
 export async function chatCommand(message: string) {
-  const { text, meta } = await generateContent(message);
+  const config = await loadConfig();
+  const { text, meta } = await generateContent(message, config.ai.planning);
   
   console.log(`\n===== Response =====`);
   console.log(text);
@@ -29,7 +30,7 @@ export async function planCommand(request: string, options: { file?: string[] })
   const prompt = await buildPhaseAPrompt(request, options.file);
   const config = await loadConfig();
 
-  const { text, meta } = await generateContent(prompt, config.ai.model);
+  const { text, meta } = await generateContent(prompt, config.ai.planning);
   
   console.log('Extracting and parsing YAML...');
   let { yamlRaw, parsedObject, error } = extractAndParseYaml(text);
@@ -42,7 +43,7 @@ export async function planCommand(request: string, options: { file?: string[] })
     console.log('Attempting self-healing (retry 1/1)...');
     
     const repairPrompt = await buildRepairPrompt(errorDetail);
-    const { text: repairedText } = await generateContent(repairPrompt, config.ai.flash_model);
+    const { text: repairedText } = await generateContent(repairPrompt, config.ai.execution);
     
     const repairResult = extractAndParseYaml(repairedText);
     if (!repairResult.error && repairResult.parsedObject && typeof repairResult.parsedObject === 'object' && validatePhaseA(repairResult.parsedObject).isValid) {

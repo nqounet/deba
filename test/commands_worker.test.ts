@@ -23,7 +23,12 @@ describe('commands/worker module', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(queue.getQueueDirPath).mockReturnValue('/mock/queue');
-    vi.mocked(configUtils.loadConfig).mockResolvedValue({ ai: { flash_model: 'flash' } } as any);
+    vi.mocked(configUtils.loadConfig).mockResolvedValue({
+      ai: {
+        planning: { provider: 'gemini', model: 'planning-model' },
+        execution: { provider: 'gemini', model: 'execution-model' }
+      }
+    } as any);
   });
 
   it('workerCommand: 1回実行して待機または終了すること', async () => {
@@ -44,5 +49,6 @@ describe('commands/worker module', () => {
     expect(queue.moveTask).toHaveBeenCalledWith('task1.json', 'todo', 'doing');
     expect(runner.executeStep).toHaveBeenCalled();
     expect(queue.moveTask).toHaveBeenCalledWith('task1.json', 'doing', 'done');
+    expect(ai.generateContent).toHaveBeenCalledWith(expect.anything(), { provider: 'gemini', model: 'execution-model' });
   });
 });

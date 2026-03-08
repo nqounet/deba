@@ -4,6 +4,7 @@ import { execSync } from 'child_process';
 import { generateContent } from './ai.js';
 import { getMainRepoRoot, getRepoStorageRoot } from './utils/git.js';
 import { buildIngestionPrompt } from './prompt.js';
+import { loadConfig } from './utils/config.js';
 
 function getIngestionPaths() {
   const brainDir = path.join(getRepoStorageRoot(), 'brain');
@@ -47,9 +48,10 @@ export async function performIngestion(): Promise<string> {
 
   // 3. LLM への解析依頼
   const prompt = await buildIngestionPrompt(fileTree, contextFiles);
+  const config = await loadConfig();
 
   try {
-    const response = await generateContent(prompt);
+    const response = await generateContent(prompt, config.ai.execution);
     const ingestionContent = response.text;
 
     await fs.mkdir(brainDir, { recursive: true });

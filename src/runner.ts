@@ -64,7 +64,7 @@ export async function executeStep(step: any, cautions: any[], taskId: string, wo
   const config = await loadConfig();
 
   const systemInstruction = "あなたは優秀なプログラマーです。プロンプトの指示に厳密に従い、変更後の完全なコードのみを出力してください。Markdownのコードブロック記号は不要です。";
-  const { text: rawOutput, meta } = await generateContent(prompt, config.ai.flash_model, systemInstruction, { silent: true });
+  const { text: rawOutput, meta } = await generateContent(prompt, config.ai.execution, systemInstruction, { silent: true });
 
   // Markdownのコードブロックが含まれている場合は中身を抽出する
   let text = rawOutput;
