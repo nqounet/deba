@@ -13,6 +13,11 @@ vi.mock('../src/knowledge', () => ({
   searchKnowledge: vi.fn().mockResolvedValue([]),
   formatKnowledgeForPrompt: vi.fn()
 }));
+vi.mock('../src/episode', () => ({
+  loadRecentEpisodes: vi.fn().mockResolvedValue('※記録なし')
+}));
+
+import { loadRecentEpisodes } from '../src/episode';
 
 describe('prompt module', () => {
   beforeEach(() => {
@@ -41,10 +46,9 @@ describe('prompt module', () => {
     it('エピソード記録が存在する場合、それらをプロンプトに含めること', async () => {
       vi.mocked(fs.readFile).mockImplementation(async (path) => {
         if (typeof path === 'string' && path.includes('templates/phase_a.md')) return '{{RELATED_EPISODES}}';
-        if (typeof path === 'string' && path.includes('brain/episodes')) return 'Recent Episode content';
         return '';
       });
-      vi.mocked(fs.readdir).mockResolvedValue(['2024-01-01_001.md'] as any);
+      vi.mocked(loadRecentEpisodes).mockResolvedValue('Recent Episode content');
 
       const result = await buildPhaseAPrompt('request');
       expect(result).toContain('Recent Episode content');

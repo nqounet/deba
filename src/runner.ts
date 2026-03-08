@@ -4,9 +4,11 @@ import { generateContent } from './ai.js';
 import { buildPhaseBPrompt } from './prompt.js';
 import { saveSnapshot } from './snapshot.js';
 import { StepBatch } from './dag.js';
-import { exec, execSync } from 'child_process';
+import { exec } from 'child_process';
 import { loadConfig } from './utils/config.js';
 import { spinner } from './utils/spinner.js';
+import { parseCodeBlocks } from './utils/parser.js';
+import { applyFileChange } from './utils/fs.js';
 
 /**
  * 指定したテストコマンド（またはデフォルトの npm test）を実行し、その結果を返す。
@@ -82,63 +84,16 @@ export async function executeStep(step: any, cautions: any[], taskId: string, wo
   }
 
   // --- AIの回答から複数ファイルのコードブロックを抽出・パース ---
-  // 形式: ```[file_path]\n[content]\n```
-  const codeBlockRegex = /```([\w./\-_]+)?\n([\s\S]*?)\n```/g;
-  const fileChanges: { path: string, content: string }[] = [];
-  const commonLanguages = ['typescript', 'ts', 'javascript', 'js', 'json', 'yaml', 'yml', 'markdown', 'md', 'bash', 'sh', 'python', 'py', 'css', 'html', 'go', 'rust', 'rs', 'ruby', 'rb', 'php'];
-  
-  let match;
-  while ((match = codeBlockRegex.exec(rawOutput)) !== null) {
-    let filePath = match[1] ? match[1].trim() : '';
-    const content = match[2].trim();
+  const fileChanges = parseCodeBlocks(rawOutput, step.target_files);
 
-    // 言語名と思われるものはパスとして採用しない
-    const isLanguage = filePath && commonLanguages.includes(filePath.toLowerCase());
-    
-    // パスが空、または言語名のみ、または target_files に含まれない単一単語の場合の補正
-    if (!filePath || isLanguage) {
-      if (Array.isArray(step.target_files) && step.target_files.length === 1) {
-        filePath = step.target_files[0];
-      }
-    }
-
-    if (filePath) {
-      // パスラベルトラバーサル対策: パスを正規化し、ベースディレクトリを越えていないか確認
-      const normalizedPath = path.normalize(filePath);
-      if (normalizedPath.startsWith('..') || path.isAbsolute(normalizedPath)) {
-        console.warn(`⚠️ Security warning: Blocked attempt to modify file outside working directory: ${filePath}`);
-        continue;
-      }
-      fileChanges.push({ path: normalizedPath, content });
-    }
-  }
-
-  // もしコードブロックが全く見つからなかった場合は、全文を単一ファイルとして扱う（互換性のため）
   if (fileChanges.length === 0 && Array.isArray(step.target_files) && step.target_files.length > 0) {
-    // 前後のバッククォートがあれば除去（旧形式対応）
-    const cleanText = rawOutput.replace(/^```(?:\w+)?\n/, '').replace(/\n```$/, '').trim();
-    fileChanges.push({ path: step.target_files[0], content: cleanText });
-  }
-
-  if (fileChanges.length === 0) {
     console.warn(`⚠️ No code changes detected in AI output for Step ${step.id}.`);
   }
 
   // --- 実ファイルへの適用 ---
   for (const change of fileChanges) {
     try {
-      const absPath = path.resolve(baseDir, change.path);
-      // ディレクトリが存在しない場合は作成
-      await fs.mkdir(path.dirname(absPath), { recursive: true });
-      await fs.writeFile(absPath, change.content, 'utf-8');
-      console.log(`✅ Applied changes to: ${change.path} (in ${baseDir})`);
-
-      // Git リポジトリ内であれば git add を実行する
-      try {
-        execSync(`git add ${change.path}`, { cwd: baseDir });
-      } catch {
-        // Git 管理下でない場合は無視
-      }
+      await applyFileChange(baseDir, change.path, change.content);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
       console.error(`❌ Failed to write file ${change.path}: ${message}`);
