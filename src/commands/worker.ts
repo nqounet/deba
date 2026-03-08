@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { initQueueDirs, getQueueDirPath, moveTask } from '../utils/queue.js';
+import { initQueueDirs, getQueueDirPath, moveTask, touchTask } from '../utils/queue.js';
 import { executeStep } from '../runner.js';
 import { createWorktree, getMainRepoRoot, getRepoStorageRoot } from '../utils/git.js';
 import { buildSkillSuggestionPrompt } from '../prompt.js';
