@@ -12,7 +12,8 @@ import {
   createWorktree,
   removeWorktree,
   mergeWorktree,
-  cleanWorktrees
+  cleanWorktrees,
+  __resetMainRepoRootCache
 } from '../src/utils/git';
 
 vi.mock('child_process');
@@ -23,6 +24,7 @@ describe('git utils', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(os.homedir).mockReturnValue('/home/user');
+    __resetMainRepoRootCache();
   });
 
   describe('getRemoteOriginUrl', () => {

@@ -46,39 +46,44 @@ export function getRepoStorageRoot(): string {
   return storageRoot;
 }
 
+let cachedMainRepoRoot: string | null = null;
+
+/**
+ * テスト用にキャッシュをリセットする (内部用)
+ */
+export function __resetMainRepoRootCache(): void {
+  cachedMainRepoRoot = null;
+}
+
 /**
  * メインリポジトリのルートディレクトリ（本営）を確実に取得する。
- * Worktree 内から実行された場合でも、Worktree ではない「メインのワーキングツリー」のルートを返す。
- * Git 管理下でない場合は process.cwd() を返す。
  */
 export function getMainRepoRoot(): string {
+  if (cachedMainRepoRoot) return cachedMainRepoRoot;
+
   try {
     // 1. まず現在のワーキングツリーのルートを取得
     const currentToplevel = execSync('git rev-parse --show-toplevel', { encoding: 'utf8' }).trim();
     
     // 2. メインリポジトリの共通 .git ディレクトリを取得
-    // Worktree の場合、これはメインリポジトリ内の .git ディレクトリを指す
     const commonDir = execSync('git rev-parse --git-common-dir', { encoding: 'utf8' }).trim();
     const absCommonDir = path.resolve(currentToplevel, commonDir);
     
-    // 3. commonDir が ".git" で終わっている場合、その親がメインリポジトリのルート
-    // (通常、メインリポジトリでは commonDir は ".git" または絶対パスになる)
     if (absCommonDir.endsWith('.git')) {
-      return path.dirname(absCommonDir);
-    }
-    
-    // Worktree の場合、commonDir はメインリポジトリの .git フォルダ内を指す
-    // 例: /path/to/main/.git/worktrees/task_xxx
-    // この場合は、".git" という名前のディレクトリが見つかるまで親に遡る
-    let current = absCommonDir;
-    while (current !== path.dirname(current)) {
-      if (path.basename(current) === '.git') {
-        return path.dirname(current);
+      cachedMainRepoRoot = path.dirname(absCommonDir);
+    } else {
+      let current = absCommonDir;
+      while (current !== path.dirname(current)) {
+        if (path.basename(current) === '.git') {
+          cachedMainRepoRoot = path.dirname(current);
+          break;
+        }
+        current = path.dirname(current);
       }
-      current = path.dirname(current);
+      if (!cachedMainRepoRoot) cachedMainRepoRoot = currentToplevel;
     }
 
-    return currentToplevel;
+    return cachedMainRepoRoot;
   } catch (error) {
     return process.cwd();
   }

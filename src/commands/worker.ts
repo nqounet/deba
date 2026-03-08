@@ -48,7 +48,7 @@ async function recoverStaleTasks() {
   try {
     const files = await fs.readdir(doingDir);
     const now = Date.now();
-    const STALE_THRESHOLD = 30 * 60 * 1000; // 30 minutes
+    const STALE_THRESHOLD = 10 * 60 * 1000; // 10 minutes
 
     for (const filename of files) {
       if (!filename.endsWith('.json')) continue;
@@ -56,7 +56,7 @@ async function recoverStaleTasks() {
       const stats = await fs.stat(filePath);
       
       if (now - stats.mtimeMs > STALE_THRESHOLD) {
-        console.log(`[Worker] 🛠️ 停滞しているタスクを復旧しています (30分以上経過): ${filename}`);
+        console.log(`[Worker] 🛠️ 停滞しているタスクを復旧しています (10分以上更新なし): ${filename}`);
         try {
           await moveTask(filename, 'doing', 'todo');
         } catch (error: any) {
@@ -110,19 +110,28 @@ export async function workerCommand(options: { once?: boolean } = {}) {
           // Worktree の準備
           const worktreeDir = createWorktree(taskId);
           
-          // ステップの実行
-          const result = await executeStep(taskData, [], taskId, worktreeDir);
-          
-          if (result.testResult && result.testResult.code !== 0) {
-             throw new Error(`Test failed for step ${taskData.id}`);
+          // ハートビート開始（1分ごとに更新）
+          const heartbeat = setInterval(async () => {
+            await touchTask(filename, 'doing');
+          }, 60000);
+
+          try {
+            // ステップの実行
+            const result = await executeStep(taskData, [], taskId, worktreeDir);
+            
+            if (result.testResult && result.testResult.code !== 0) {
+               throw new Error(`Test failed for step ${taskData.id}`);
+            }
+            
+            // doing -> done へ移動
+            await moveTask(filename, 'doing', 'done');
+            console.log(`[Worker] ✅ Task completed: ${filename}`);
+            
+            // 成功体験からのスキル提案
+            await suggestSkillFromSuccess(taskData.description, result.text);
+          } finally {
+            clearInterval(heartbeat);
           }
-          
-          // doing -> done へ移動
-          await moveTask(filename, 'doing', 'done');
-          console.log(`[Worker] ✅ Task completed: ${filename}`);
-          
-          // 成功体験からのスキル提案
-          await suggestSkillFromSuccess(taskData.description, result.text);
           
         } catch (error: any) {
           console.error(`[Worker] ❌ Task failed: ${filename} - ${error.message}`);
