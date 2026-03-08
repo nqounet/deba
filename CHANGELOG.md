@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.4] - 2026-03-08
+### Added
+- Enhanced review UX, queue reliability, and git performance.
+- Improved worktree isolation, multi-file support, and worker reliability.
+### Changed
+- Modularized core logic for improved maintainability.
+- Addressed code review feedback on security and quality.
+- Enhanced security and robustness in worktree and file operations.
+### Fixed
+- Fixed build failure by importing missing `touchTask` in `workerCommand`.
+### Removed
+- Removed deprecated designs and completed plans from documentation.
+
 ## [0.11.3] - 2026-03-08
 ### Added
 - Added `GEMINI.md` referencing `AGENTS.md`.
