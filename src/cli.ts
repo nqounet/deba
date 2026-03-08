@@ -126,7 +126,7 @@ maintenance
 
 maintenance
   .command('setup-skill')
-  .description('SKILL.md を ~/.agents/skills/deba/SKILL.md にインストールする')
+  .description('skills/deba/SKILL.md を ~/.agents/skills/deba/SKILL.md にインストールする')
   .action(setupSkillCommand);
 
 maintenance
