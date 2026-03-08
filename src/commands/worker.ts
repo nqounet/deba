@@ -40,11 +40,44 @@ async function suggestSkillFromSuccess(taskDescription: string, taskResult: stri
   }
 }
 
+/**
+ * 停滞している (doing のまま長時間放置されている) タスクを todo に戻す
+ */
+async function recoverStaleTasks() {
+  const doingDir = getQueueDirPath('doing');
+  try {
+    const files = await fs.readdir(doingDir);
+    const now = Date.now();
+    const STALE_THRESHOLD = 30 * 60 * 1000; // 30 minutes
+
+    for (const filename of files) {
+      if (!filename.endsWith('.json')) continue;
+      const filePath = path.join(doingDir, filename);
+      const stats = await fs.stat(filePath);
+      
+      if (now - stats.mtimeMs > STALE_THRESHOLD) {
+        console.log(`[Worker] 🛠️ 停滞しているタスクを復旧しています (30分以上経過): ${filename}`);
+        try {
+          await moveTask(filename, 'doing', 'todo');
+        } catch (error: any) {
+          console.error(`[Worker] タスクの復旧に失敗しました: ${filename} - ${error.message}`);
+        }
+      }
+    }
+  } catch (error) {
+    // ディレクトリがない場合は無視
+  }
+}
+
 export async function workerCommand(options: { once?: boolean } = {}) {
   console.log('Deba Worker 起動中...');
   
   try {
     await initQueueDirs();
+    
+    // 起動時に停滞タスクをチェック
+    await recoverStaleTasks();
+
     console.log('✅ キューディレクトリが準備できました。監視を開始します。 (Ctrl+C で終了)');
     
     const todoDir = getQueueDirPath('todo');

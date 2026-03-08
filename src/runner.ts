@@ -63,20 +63,8 @@ export async function executeStep(step: any, cautions: any[], taskId: string, wo
   const prompt = await buildPhaseBPrompt(step.description, targetFilesContent, cautions || []);
   const config = await loadConfig();
 
-  const systemInstruction = "あなたは優秀なプログラマーです。プロンプトの指示に厳密に従い、変更後の完全なコードのみを出力してください。Markdownのコードブロック記号は不要です。";
+  const systemInstruction = "あなたは優秀なプログラマーです。プロンプトの指示に厳密に従い、変更後の完全なコードを Markdown のコードブロック形式で出力してください。";
   const { text: rawOutput, meta } = await generateContent(prompt, config.ai.execution, systemInstruction, { silent: true });
-
-  // Markdownのコードブロックが含まれている場合は中身を抽出する
-  let text = rawOutput;
-  const codeBlockRegex = /```(?:\w+)?\n([\s\S]*?)\n```/g;
-  const matches = [...rawOutput.matchAll(codeBlockRegex)];
-  if (matches.length > 0) {
-    // 最初のコードブロックを採用
-    text = matches[0][1].trim();
-  } else {
-    // コードブロックがない場合、もし先頭か末尾にバッククォートがあれば除去する（極稀なケース）
-    text = rawOutput.replace(/^```(?:\w+)?\n/, '').replace(/\n```$/, '').trim();
-  }
 
   await saveSnapshot(taskId, {
     input: prompt,
@@ -84,40 +72,73 @@ export async function executeStep(step: any, cautions: any[], taskId: string, wo
     meta: meta,
   }, `step_${step.id}`);
 
-  console.log(`\n===== Step ${step.id} Output (Code Change) =====`);
-  console.log(text);
-  console.log(`=========================================\n`);
+  console.log(`\n===== Step ${step.id} Output (Code Changes Parsed) =====`);
 
   // AIの回答が AMBIGUITY: で始まる場合は、実行を中断する
-  if (text.trim().startsWith('AMBIGUITY:')) {
+  if (rawOutput.trim().startsWith('AMBIGUITY:')) {
     console.warn(`⚠️ Skipped applying changes because AI reported ambiguity.`);
-    return { text, success: false };
+    return { text: rawOutput, success: false };
+  }
+
+  // --- AIの回答から複数ファイルのコードブロックを抽出・パース ---
+  // 形式: ```[file_path]\n[content]\n```
+  const codeBlockRegex = /```([\w./\-_]+)?\n([\s\S]*?)\n```/g;
+  const fileChanges: { path: string, content: string }[] = [];
+  const commonLanguages = ['typescript', 'ts', 'javascript', 'js', 'json', 'yaml', 'yml', 'markdown', 'md', 'bash', 'sh', 'python', 'py', 'css', 'html', 'go', 'rust', 'rs', 'ruby', 'rb', 'php'];
+  
+  let match;
+  while ((match = codeBlockRegex.exec(rawOutput)) !== null) {
+    let filePath = match[1] ? match[1].trim() : '';
+    const content = match[2].trim();
+
+    // 言語名と思われるものはパスとして採用しない
+    const isLanguage = filePath && commonLanguages.includes(filePath.toLowerCase());
+    
+    // パスが空、または言語名のみ、または target_files に含まれない単一単語の場合の補正
+    if (!filePath || isLanguage) {
+      if (Array.isArray(step.target_files) && step.target_files.length === 1) {
+        filePath = step.target_files[0];
+      }
+    }
+
+    if (filePath) {
+      fileChanges.push({ path: filePath, content });
+    }
+  }
+
+  // もしコードブロックが全く見つからなかった場合は、全文を単一ファイルとして扱う（互換性のため）
+  if (fileChanges.length === 0 && Array.isArray(step.target_files) && step.target_files.length > 0) {
+    // 前後のバッククォートがあれば除去（旧形式対応）
+    const cleanText = rawOutput.replace(/^```(?:\w+)?\n/, '').replace(/\n```$/, '').trim();
+    fileChanges.push({ path: step.target_files[0], content: cleanText });
+  }
+
+  if (fileChanges.length === 0) {
+    console.warn(`⚠️ No code changes detected in AI output for Step ${step.id}.`);
   }
 
   // --- 実ファイルへの適用 ---
-  if (Array.isArray(step.target_files) && step.target_files.length > 0) {
-    if (step.target_files.length > 1) {
-      console.warn(`⚠️ Multiple target files specified for step ${step.id}. Applying changes only to the first file: ${step.target_files[0]}`);
-    }
-
-    const targetFile = step.target_files[0];
+  for (const change of fileChanges) {
     try {
-      const absPath = path.resolve(baseDir, targetFile);
+      const absPath = path.resolve(baseDir, change.path);
       // ディレクトリが存在しない場合は作成
       await fs.mkdir(path.dirname(absPath), { recursive: true });
-      await fs.writeFile(absPath, text, 'utf-8');
-      console.log(`✅ Applied changes to: ${targetFile} (in ${baseDir})`);
+      await fs.writeFile(absPath, change.content, 'utf-8');
+      console.log(`✅ Applied changes to: ${change.path} (in ${baseDir})`);
 
       // Git リポジトリ内であれば git add を実行する
       try {
-        execSync(`git add ${targetFile}`, { cwd: baseDir });
+        execSync(`git add ${change.path}`, { cwd: baseDir });
       } catch {
         // Git 管理下でない場合は無視
       }
     } catch (e: any) {
-      console.error(`❌ Failed to write file ${targetFile}: ${e.message}`);
+      console.error(`❌ Failed to write file ${change.path}: ${e.message}`);
     }
   }
+
+  // 互換性のための text 変数（最初の変更内容をセット）
+  let text = fileChanges.length > 0 ? fileChanges[0].content : rawOutput;
 
   // ステップ固有のテストがある場合は実行する
   let testResult;

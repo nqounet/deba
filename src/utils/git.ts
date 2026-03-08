@@ -93,14 +93,14 @@ export function getWorktreePath(taskId: string): string {
 }
 
 /**
- * 指定した taskId に基づいて一時的な Git Worktree を作成する
+ * 指定した taskId に基づいて一時的な Git Worktree を作成または再利用する
  */
 export function createWorktree(taskId: string): string {
   try {
     const worktreeDir = getWorktreePath(taskId);
     const branchName = `feature/${taskId}`;
 
-    console.log(`\n--- Creating Git Worktree for isolation ---`);
+    console.log(`\n--- Git Worktree for isolation ---`);
     console.log(`Directory: ${worktreeDir}`);
     console.log(`Branch: ${branchName}`);
 
@@ -110,11 +110,29 @@ export function createWorktree(taskId: string): string {
       fs.mkdirSync(worktreesBase, { recursive: true });
     }
 
-    // 既存の worktree や branch があれば削除（念のため）
-    try { execSync(`git worktree remove ${worktreeDir} --force`, { stdio: 'ignore' }); } catch {}
-    try { execSync(`git branch -D ${branchName}`, { stdio: 'ignore' }); } catch {}
+    // 既に正しいブランチで Worktree が存在するか確認
+    let reuseExisting = false;
+    try {
+      const porcelain = execSync('git worktree list --porcelain', { encoding: 'utf8' });
+      const worktrees = porcelain.split('\n\n');
+      for (const wtInfo of worktrees) {
+        if (wtInfo.includes(`worktree ${worktreeDir}`) && wtInfo.includes(`branch refs/heads/${branchName}`)) {
+          reuseExisting = true;
+          break;
+        }
+      }
+    } catch {}
 
-    execSync(`git worktree add -b ${branchName} ${worktreeDir}`, { stdio: 'inherit' });
+    if (reuseExisting) {
+      console.log(`✅ Reusing existing worktree at ${worktreeDir}`);
+    } else {
+      // 既存の worktree や branch があれば削除（念のため）
+      try { execSync(`git worktree remove ${worktreeDir} --force`, { stdio: 'ignore' }); } catch {}
+      try { execSync(`git branch -D ${branchName}`, { stdio: 'ignore' }); } catch {}
+
+      console.log(`Creating new worktree...`);
+      execSync(`git worktree add -b ${branchName} ${worktreeDir}`, { stdio: 'inherit' });
+    }
 
     // node_modules をメインリポジトリからシンボリックリンクする
     const mainRoot = getMainRepoRoot();
@@ -122,17 +140,58 @@ export function createWorktree(taskId: string): string {
     const wtNodeModules = path.join(worktreeDir, 'node_modules');
     
     if (fs.existsSync(mainNodeModules)) {
-      console.log(`Linking node_modules from ${mainNodeModules} to ${wtNodeModules}`);
-      // 既存の（空の）ディレクトリがあれば削除
-      if (fs.existsSync(wtNodeModules) && fs.lstatSync(wtNodeModules).isDirectory()) {
-        fs.rmSync(wtNodeModules, { recursive: true, force: true });
+      if (!fs.existsSync(wtNodeModules)) {
+        console.log(`Linking node_modules from ${mainNodeModules} to ${wtNodeModules}`);
+        // 既存の（空の）ディレクトリがあれば削除
+        if (fs.existsSync(wtNodeModules) && fs.lstatSync(wtNodeModules).isDirectory()) {
+          fs.rmSync(wtNodeModules, { recursive: true, force: true });
+        }
+        fs.symlinkSync(mainNodeModules, wtNodeModules, 'dir');
       }
-      fs.symlinkSync(mainNodeModules, wtNodeModules, 'dir');
     }
+
+    // 環境ファイルなどの同期
+    syncEnvironmentFiles(mainRoot, worktreeDir);
 
     return worktreeDir;
   } catch (error: any) {
-    throw new Error(`Failed to create git worktree: ${error.message}`);
+    throw new Error(`Failed to create or reuse git worktree: ${error.message}`);
+  }
+}
+
+/**
+ * .env や mise.toml などの非管理ファイルをメインから Worktree へ同期する
+ */
+function syncEnvironmentFiles(srcDir: string, destDir: string): void {
+  const filesToSync = [
+    '.env',
+    '.env.local',
+    '.env.development',
+    '.env.test',
+    'mise.toml',
+    '.tool-versions',
+    'package-lock.json', // 依存関係の整合性のため
+  ];
+
+  for (const file of filesToSync) {
+    const srcPath = path.join(srcDir, file);
+    const destPath = path.join(destDir, file);
+
+    if (fs.existsSync(srcPath)) {
+      try {
+        // ディレクトリの場合は再帰的にコピー、ファイルの場合は普通にコピー
+        if (fs.lstatSync(srcPath).isDirectory()) {
+          // 今回はファイルのみを想定
+          continue;
+        }
+        
+        // 既に存在して内容が同じならスキップしても良いが、簡略化のため常にコピー
+        fs.copyFileSync(srcPath, destPath);
+        // console.log(`Synced: ${file}`);
+      } catch (error: any) {
+        console.warn(`⚠️ Failed to sync ${file}: ${error.message}`);
+      }
+    }
   }
 }
 

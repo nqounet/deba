@@ -133,9 +133,17 @@ branch refs/heads/feature/task1
         if (cmd.includes('remote -v')) return 'origin	ssh://git@github.com/nqounet/deba.git (fetch)\n' as any;
         if (cmd.includes('--show-toplevel')) return '/path/to/main' as any;
         if (cmd.includes('--git-common-dir')) return '.git' as any;
+        if (cmd.includes('worktree list')) return 'worktree /path/to/main\n' as any;
         return '' as any;
       });
-      vi.mocked(fs.existsSync).mockReturnValue(true);
+      // 最初の数回の呼び出し（リポジトリ構成要素の確認など）は true、
+      // wtNodeModules の確認時は false を返すように工夫する必要がある。
+      vi.mocked(fs.existsSync).mockImplementation((p: any) => {
+        const pathStr = p.toString();
+        // Worktree 内の node_modules の存在確認時のみ false を返す
+        if (pathStr.includes('deba-wt-task1') && pathStr.includes('node_modules')) return false;
+        return true;
+      });
       vi.mocked(fs.lstatSync).mockReturnValue({ isDirectory: () => true } as any);
 
       const wtPath = createWorktree('task1');
@@ -147,7 +155,7 @@ branch refs/heads/feature/task1
 
     it('エラーが発生した場合、例外を投げること', () => {
       vi.mocked(execSync).mockImplementation(() => { throw new Error('git error'); });
-      expect(() => createWorktree('task1')).toThrow(/Failed to create git worktree/);
+      expect(() => createWorktree('task1')).toThrow(/Failed to create or reuse git worktree/);
     });
   });
 
