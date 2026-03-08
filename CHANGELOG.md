@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.3] - 2026-03-08
+### Added
+- Added `GEMINI.md` referencing `AGENTS.md`.
+### Changed
+- Refactored AI configuration to separate `ai.planning` and `ai.execution`, allowing independent provider/model settings for different phases.
+- Decoupled `generateContent` from configuration loading to follow SOLID principles (Dependency Inversion).
+
 ## [0.11.2] - 2026-03-08
 ### Added
 - Implement dependency tracking in the execution phase. Steps that depend on failed or ambiguous (AMBIGUITY) steps will now be correctly skipped to prevent unnecessary resource usage.
