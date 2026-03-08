@@ -28,22 +28,23 @@ export async function loadRecentEpisodes(maxCount: number = 5): Promise<string> 
     const mdFiles = files.filter(f => f.endsWith('.md')).sort().reverse().slice(0, maxCount);
     if (mdFiles.length === 0) return '※記録なし';
 
-    let combined = '';
-    for (const file of mdFiles) {
+    const contents = await Promise.all(mdFiles.map(async (file) => {
       const filePath = path.join(EPISODES_DIR, file);
       try {
         const content = await fs.readFile(filePath, 'utf-8');
-        combined += `\n---\n${content}\n`;
-      } catch (fileError: any) {
+        return `\n---\n${content}\n`;
+      } catch (fileError: unknown) {
         // 個別のエピソードファイル読み込みエラーは、全体の処理を中断せず、エラーメッセージとして含める
-        console.error(`エピソードファイルの読み込みに失敗しました: ${filePath} - ${fileError.message}`);
-        combined += `\n---\n※エピソードファイルの読み込み失敗: ${fileError.message}\n`;
+        const message = fileError instanceof Error ? fileError.message : String(fileError);
+        console.error(`エピソードファイルの読み込みに失敗しました: ${filePath} - ${message}`);
+        return `\n---\n※エピソードファイルの読み込み失敗: ${message}\n`;
       }
-    }
-    return combined;
-  } catch (dirError: any) {
+    }));
+    return contents.join('');
+  } catch (dirError: unknown) {
     // ディレクトリが存在しないなどのエラー
-    console.error(`エピソードディレクトリの読み込みに失敗しました: ${EPISODES_DIR} - ${dirError.message}`);
+    const message = dirError instanceof Error ? dirError.message : String(dirError);
+    console.error(`エピソードディレクトリの読み込みに失敗しました: ${EPISODES_DIR} - ${message}`);
     return '※記録なし';
   }
 }

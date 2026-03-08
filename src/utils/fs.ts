@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 
 /**
  * ディレクトリを確実に作成し、ファイルを書き込む。
@@ -16,7 +16,7 @@ export async function applyFileChange(baseDir: string, filePath: string, content
 
   // Git リポジトリ内であれば git add を実行する
   try {
-    execSync(`git add ${filePath}`, { cwd: baseDir });
+    execFileSync('git', ['add', filePath], { cwd: baseDir });
   } catch {
     // Git 管理下でない場合、または git が利用できない場合は無視
   }

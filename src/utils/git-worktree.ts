@@ -143,9 +143,13 @@ export function cleanWorktrees(): void {
   }
 
   for (const wt of worktrees) {
-    const taskIdMatch = wt.match(/deba-wt-(task_\d+_\d+)/);
-    const taskId = taskIdMatch ? taskIdMatch[1] : '';
-    removeWorktree(wt, taskId);
+    const taskIdMatch = wt.match(/deba-wt-(task_\d+_\d+_[a-f0-9]+)/);
+    if (taskIdMatch && taskIdMatch[1]) {
+      const taskId = taskIdMatch[1];
+      removeWorktree(wt, taskId);
+    } else {
+      console.warn(`⚠️ Could not extract a valid taskId from worktree path: ${wt}. Skipping cleanup.`);
+    }
   }
 }
 
