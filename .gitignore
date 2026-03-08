@@ -7,3 +7,4 @@ build/
 # snapshots/
 # .worktrees/
 deba.skill
+.wt/
