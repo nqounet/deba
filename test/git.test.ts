@@ -119,13 +119,13 @@ origin	ssh://git@github.com/nqounet/deba.git (push)
       const output = `worktree /path/to/main
 HEAD 12345
 
-worktree /path/to/storage/worktrees/deba-wt-task1
+worktree /path/to/storage/worktrees/deba-wt-task_20260308_120000_abcdef12
 HEAD 67890
-branch refs/heads/feature/task1
+branch refs/heads/feature/task_20260308_120000_abcdef12
 `;
       
       const list = getWorktreesToClean(output);
-      expect(list).toEqual(['/path/to/storage/worktrees/deba-wt-task1']);
+      expect(list).toEqual(['/path/to/storage/worktrees/deba-wt-task_20260308_120000_abcdef12']);
     });
   });
 
@@ -143,15 +143,15 @@ branch refs/heads/feature/task1
       vi.mocked(fs.existsSync).mockImplementation((p: any) => {
         const pathStr = p.toString();
         // Worktree 内の node_modules の存在確認時のみ false を返す
-        if (pathStr.includes('deba-wt-task1') && pathStr.includes('node_modules')) return false;
+        if (pathStr.includes('deba-wt-task_20260308_120000_abcdef12') && pathStr.includes('node_modules')) return false;
         return true;
       });
       vi.mocked(fs.lstatSync).mockReturnValue({ isDirectory: () => true } as any);
 
-      const wtPath = createWorktree('task1');
+      const wtPath = createWorktree('task_20260308_120000_abcdef12');
 
-      expect(wtPath).toContain('deba-wt-task1');
-      expect(execSync).toHaveBeenCalledWith(expect.stringContaining('git worktree add -b feature/task1'), expect.objectContaining({ stdio: 'inherit' }));
+      expect(wtPath).toContain('deba-wt-task_20260308_120000_abcdef12');
+      expect(execSync).toHaveBeenCalledWith(expect.stringContaining('git worktree add -b feature/task_20260308_120000_abcdef12'), expect.objectContaining({ stdio: 'inherit' }));
       expect(fs.symlinkSync).toHaveBeenCalled(); 
     });
 
@@ -164,9 +164,9 @@ branch refs/heads/feature/task1
   describe('removeWorktree', () => {
     it('git worktree remove を呼び出すこと', () => {
       vi.mocked(execSync).mockReturnValue('' as any);
-      removeWorktree('/path/to/wt', 'task1');
+      removeWorktree('/path/to/wt', 'task_20260308_120000_abcdef12');
       expect(execSync).toHaveBeenCalledWith(expect.stringContaining('git worktree remove'), expect.any(Object));
-      expect(execSync).toHaveBeenCalledWith(expect.stringContaining('git branch -D feature/task1'), expect.any(Object));
+      expect(execSync).toHaveBeenCalledWith(expect.stringContaining('git branch -D feature/task_20260308_120000_abcdef12'), expect.any(Object));
     });
   });
 
@@ -176,7 +176,7 @@ branch refs/heads/feature/task1
         if (cmd.includes('remote -v')) return 'origin	ssh://git@github.com/nqounet/deba.git (fetch)\n' as any;
         return '' as any;
       });
-      mergeWorktree('task1');
+      mergeWorktree('task_20260308_120000_abcdef12');
       expect(execSync).toHaveBeenCalledWith('git add .', expect.objectContaining({ cwd: expect.any(String) }));
       expect(execSync).toHaveBeenCalledWith(expect.stringContaining('git merge --squash'), expect.any(Object));
     });
@@ -186,14 +186,14 @@ branch refs/heads/feature/task1
     it('deba-wt- を含む全ての worktree を削除すること', () => {
       vi.mocked(execSync).mockImplementation((cmd: string) => {
         if (cmd.includes('list --porcelain')) {
-          return 'worktree /path/to/deba-wt-task1\n' as any;
+          return 'worktree /path/to/deba-wt-task_20260308_120000_abcdef12\n' as any;
         }
         return '' as any;
       });
 
       cleanWorktrees();
 
-      expect(execSync).toHaveBeenCalledWith(expect.stringContaining('git worktree remove /path/to/deba-wt-task1'), expect.any(Object));
+      expect(execSync).toHaveBeenCalledWith(expect.stringContaining('git worktree remove /path/to/deba-wt-task_20260308_120000_abcdef12'), expect.any(Object));
     });
 
     it('削除対象がない場合は何もしないこと', () => {

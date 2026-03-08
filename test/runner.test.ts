@@ -4,14 +4,15 @@ import * as ai from '../src/ai';
 import * as prompt from '../src/prompt';
 import * as snapshot from '../src/snapshot';
 import * as config from '../src/utils/config';
-import { exec, execSync } from 'child_process';
+import { exec, execSync, execFileSync } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
 // child_process のモック
 vi.mock('child_process', () => ({
   exec: vi.fn(),
-  execSync: vi.fn()
+  execSync: vi.fn(),
+  execFileSync: vi.fn()
 }));
 
 // fs/promises のモック
@@ -87,7 +88,7 @@ describe('runner module', () => {
 
       expect(result.text).toBe('console.log("hello");');
       expect(fs.writeFile).toHaveBeenCalledWith(expect.stringContaining(path.normalize('src/test.ts')), 'console.log("hello");', 'utf-8');
-      expect(execSync).toHaveBeenCalledWith('git add src/test.ts', { cwd: '/mock/dir' });
+      expect(execFileSync).toHaveBeenCalledWith('git', ['add', 'src/test.ts'], { cwd: '/mock/dir' });
     });
 
     it('AIが AMBIGUITY を返した場合、ファイル書き込みをスキップすること', async () => {
