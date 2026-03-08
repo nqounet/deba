@@ -36,7 +36,7 @@ snapshots/
 | **Sprint 1** | ✅ 完了 | `deba plan` (Planning: 計画立案) |
 | **Sprint 2** | ✅ 完了 | `deba validate` (YAML検証, 依存グラフ) |
 | **Sprint 3** | ✅ 完了 | `deba execute` (Execution: 実装実行) |
-| **Sprint 4** | ✅ 完了 | `deba run` (Planning→B 結合, Git Worktree 隔離) |
+| **Sprint 4** | ✅ 完了 | `deba run` (Planning→Execution 結合, Git Worktree 隔離) |
 | **Sprint 5** | ✅ 完了 | `deba review` (Phase C), Episode 記録, 成長ログ |
 | **Sprint 6** | 🚀 進行中 | スキル整理 (`consolidate-skills`), コンテキスト注入 |
 

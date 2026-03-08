@@ -6,6 +6,7 @@ import { searchKnowledge, formatKnowledgeForPrompt } from './knowledge.js';
 import { getMainRepoRoot, getRepoStorageRoot } from './utils/git.js';
 import { loadIngestion } from './ingestion.js';
 import { loadRecentEpisodes } from './episode.js';
+import { validateFilePaths } from './utils/sanitize.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -39,8 +40,12 @@ export async function buildPlanningPrompt(request: string, targetFilePaths: stri
 
   let targetSourceCode = '※変更対象ファイルの指定なし';
   if (targetFilePaths.length > 0) {
+    // パストラバーサル防止: プロジェクトルート外のパスをフィルタリング
+    const projectRoot = process.cwd();
+    const safePaths = validateFilePaths(targetFilePaths, projectRoot);
+    
     const fileContents: string[] = [];
-    for (const filePath of targetFilePaths) {
+    for (const filePath of safePaths) {
       try {
         const content = await fs.readFile(filePath, 'utf-8');
         fileContents.push(`--- ${filePath} ---\n${content}\n`);
