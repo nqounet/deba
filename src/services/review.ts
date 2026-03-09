@@ -23,6 +23,17 @@ export interface ReviewProcessResult {
   episodePath: string;
 }
 
+async function readFirstAvailable(paths: string[]): Promise<string | null> {
+  for (const p of paths) {
+    try {
+      return await fs.readFile(p, 'utf-8');
+    } catch {
+      // Continue to the next file if reading fails
+    }
+  }
+  return null;
+}
+
 export async function getReviewContext(taskId: string): Promise<ReviewContext> {
   const snapshotDir = path.join(getRepoStorageRoot(), 'snapshots', taskId);
   try {
@@ -32,16 +43,12 @@ export async function getReviewContext(taskId: string): Promise<ReviewContext> {
   }
 
   let originalRequest = '(不明)';
-  try {
-    const planningInput = await fs.readFile(path.join(snapshotDir, 'planning_input.md'), 'utf-8');
-    originalRequest = planningInput.substring(0, 200) + '...';
-  } catch {
-    try {
-      const input = await fs.readFile(path.join(snapshotDir, 'input.md'), 'utf-8');
-      originalRequest = input.substring(0, 200) + '...';
-    } catch {
-      // ignore
-    }
+  const fileContent = await readFirstAvailable([
+    path.join(snapshotDir, 'planning_input.md'),
+    path.join(snapshotDir, 'input.md')
+  ]);
+  if (fileContent) {
+    originalRequest = fileContent.substring(0, 200) + '...';
   }
 
   const files = await fs.readdir(snapshotDir);
@@ -86,8 +93,9 @@ export async function executeReflection(taskId: string, context: ReviewContext, 
         currentSkills += `\n### ${sf}\n${content}\n`;
       }
     }
-  } catch {
-    // ignore
+  } catch (error) {
+    // If skills directory is optional, this can be ignored. Logging for debug purposes.
+    console.debug(`Could not load current skills: ${error}`);
   }
 
   const reflectionPrompt = await buildReflectionPrompt(episodeSummary, feedback, currentSkills);

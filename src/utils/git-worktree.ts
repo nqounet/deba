@@ -192,7 +192,8 @@ export function removeWorktree(worktreeDir: string, taskId: string): void {
     execSync(`git worktree remove ${worktreeDir} --force`, { stdio: 'pipe' });
   } catch (error: any) {
     const stderr = error.stderr?.toString() || '';
-    if (!stderr.includes('is not a working tree') && !stderr.includes('not a git repository') && !stderr.includes('does not exist')) {
+    const knownErrors = ['is not a working tree', 'not a git repository', 'does not exist'];
+    if (!knownErrors.some(e => stderr.includes(e))) {
       console.warn(`⚠️ Failed to remove worktree: ${stderr.trim() || error.message}`);
     }
   }
@@ -201,7 +202,8 @@ export function removeWorktree(worktreeDir: string, taskId: string): void {
     execSync(`git branch -D ${branchName}`, { stdio: 'pipe' });
   } catch (error: any) {
     const stderr = error.stderr?.toString() || '';
-    if (!stderr.includes('not found')) {
+    const knownErrors = ['not found'];
+    if (!knownErrors.some(e => stderr.includes(e))) {
       console.warn(`⚠️ Failed to remove branch: ${stderr.trim() || error.message}`);
     }
   }
