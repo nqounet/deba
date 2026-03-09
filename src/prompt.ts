@@ -1,11 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
-import { loadSkills } from './skills.js';
-import { searchKnowledge, formatKnowledgeForPrompt } from './knowledge.js';
-import { getMainRepoRoot, getRepoStorageRoot } from './utils/git.js';
-import { loadIngestion } from './ingestion.js';
-import { loadRecentEpisodes } from './episode.js';
 import { validateFilePaths } from './utils/sanitize.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -27,16 +22,21 @@ async function loadTemplate(name: string): Promise<string> {
   }
 }
 
+export interface PlanningContext {
+  ingestion: string;
+  skills: string;
+  episodes: string;
+  knowledgePrompt: string;
+}
+
 /**
  * プロンプトテンプレートを読み込み、変数を注入してPlanning用プロンプトを構築する
  */
-export async function buildPlanningPrompt(request: string, targetFilePaths: string[] = []): Promise<string> {
+export async function buildPlanningPrompt(request: string, context: PlanningContext, targetFilePaths: string[] = []): Promise<string> {
   let template = await loadTemplate('planning');
 
   template = template.replace(/\{\{USER_REQUEST\}\}/g, request);
-  
-  const ingestionContent = await loadIngestion();
-  template = template.replace(/\{\{PROJECT_SUMMARY\}\}/g, ingestionContent);
+  template = template.replace(/\{\{PROJECT_SUMMARY\}\}/g, context.ingestion);
 
   let targetSourceCode = '※変更対象ファイルの指定なし';
   if (targetFilePaths.length > 0) {
@@ -60,30 +60,12 @@ export async function buildPlanningPrompt(request: string, targetFilePaths: stri
   template = template.replace(/\{\{TARGET_SOURCE_CODE\}\}/g, targetSourceCode);
   template = template.replace(/\{\{DEPENDENCY_INTERFACES\}\}/g, '※記録なし');
 
-  // 意味記憶（スキル）の注入
-  const skills = await loadSkills();
-  
-  // 知識ベース（SKR）の検索と注入
-  // 要望に含まれる単語からキーワードを抽出
-  const searchKeywords = request
-    .split(/[\s,，.．、。]+/)
-    .filter(w => w.length > 1 && !/^(あ|い|う|え|お|は|の|に|を|と|が|で|も)$/.test(w));
-  
-  const allKeywords = Array.from(new Set([...searchKeywords, request]));
-  const uniqueKnowledgeResults = await searchKnowledge(allKeywords);
-
-  if (uniqueKnowledgeResults.length > 0) {
-    console.log(`💡 知識ベース(SKR)から ${uniqueKnowledgeResults.length} 件の知見を注入しました (Top: ${uniqueKnowledgeResults[0].content.summary})`);
-  }
-  const knowledgePrompt = formatKnowledgeForPrompt(uniqueKnowledgeResults.slice(0, 5)); // 上位5件に絞る
-
   // スキルと知識ベースの内容を結合して注入
-  const combinedMemory = `## 承認済みスキル\n${skills || '※まだ蓄積されたスキルなし'}\n\n## 過去の知見 (Knowledge Base)\n${knowledgePrompt}`;
+  const combinedMemory = `## 承認済みスキル\n${context.skills || '※まだ蓄積されたスキルなし'}\n\n## 過去の知見 (Knowledge Base)\n${context.knowledgePrompt}`;
   template = template.replace(/\{\{SEMANTIC_MEMORY\}\}/g, combinedMemory);
 
   // エピソード記憶の注入
-  const episodes = await loadRecentEpisodes();
-  template = template.replace(/\{\{RELATED_EPISODES\}\}/g, episodes);
+  template = template.replace(/\{\{RELATED_EPISODES\}\}/g, context.episodes);
 
   return template;
 }

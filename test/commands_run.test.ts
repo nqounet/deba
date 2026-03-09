@@ -15,8 +15,15 @@ vi.mock('../src/dag', () => ({
 }));
 vi.mock('../src/runner');
 vi.mock('../src/skills', () => ({
-  listSkills: vi.fn().mockResolvedValue({ count: 0, display: '' })
+  listSkills: vi.fn().mockResolvedValue({ count: 0, display: '' }),
+  loadSkills: vi.fn().mockResolvedValue('')
 }));
+vi.mock('../src/knowledge', () => ({
+  searchKnowledge: vi.fn().mockResolvedValue([]),
+  formatKnowledgeForPrompt: vi.fn().mockReturnValue('')
+}));
+vi.mock('../src/ingestion', () => ({ loadIngestion: vi.fn().mockResolvedValue('') }));
+vi.mock('../src/episode', () => ({ loadRecentEpisodes: vi.fn().mockResolvedValue('') }));
 vi.mock('../src/utils/git', () => ({
   getMainRepoRoot: vi.fn().mockReturnValue('/mock/root'),
   getRepoStorageRoot: vi.fn().mockReturnValue('/mock/storage'),
