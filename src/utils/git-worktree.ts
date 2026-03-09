@@ -187,12 +187,24 @@ export function mergeWorktree(taskId: string): void {
 export function removeWorktree(worktreeDir: string, taskId: string): void {
   const branchName = `feature/${taskId}`;
   console.log(`\n--- Removing Git Worktree ---`);
+
   try {
-    execSync(`git worktree remove ${worktreeDir} --force`, { stdio: 'inherit' });
-    execSync(`git branch -D ${branchName}`, { stdio: 'inherit' });
-    console.log(`✅ Worktree and branch ${branchName} removed.`);
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.warn(`⚠️ Failed to remove worktree or branch: ${message}`);
+    execSync(`git worktree remove ${worktreeDir} --force`, { stdio: 'pipe' });
+  } catch (error: any) {
+    const stderr = error.stderr?.toString() || '';
+    if (!stderr.includes('is not a working tree') && !stderr.includes('not a git repository') && !stderr.includes('does not exist')) {
+      console.warn(`⚠️ Failed to remove worktree: ${stderr.trim() || error.message}`);
+    }
   }
+
+  try {
+    execSync(`git branch -D ${branchName}`, { stdio: 'pipe' });
+  } catch (error: any) {
+    const stderr = error.stderr?.toString() || '';
+    if (!stderr.includes('not found')) {
+      console.warn(`⚠️ Failed to remove branch: ${stderr.trim() || error.message}`);
+    }
+  }
+
+  console.log(`✅ Worktree and branch ${branchName} removed.`);
 }

@@ -23,6 +23,9 @@ vi.mock('../src/ai');
 vi.mock('../src/yamlParser');
 vi.mock('../src/knowledge');
 vi.mock('../src/utils/config');
+vi.mock('child_process', () => ({
+  execSync: vi.fn(() => 'mocked diff')
+}));
 
 describe('commands/review module', () => {
   const mockAiConfig = {
