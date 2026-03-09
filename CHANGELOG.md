@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.5] - 2026-03-09
+### Changed
+- Refactored Phase A/B to Planning/Execution and introduced the Trust module for improved task validation.
+- Moved `SKILL.md` to the `skills/deba/` directory for better organization.
+### Fixed
+- Addressed path traversal vulnerabilities in test commands to enhance security.
+- Excluded `.wt/` directory from Vitest to avoid unnecessary test runs.
+
 ## [0.11.4] - 2026-03-08
 ### Added
 - Enhanced review UX, queue reliability, and git performance.
