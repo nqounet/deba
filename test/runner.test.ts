@@ -28,7 +28,11 @@ vi.mock('../src/ai');
 vi.mock('../src/prompt');
 vi.mock('../src/snapshot');
 vi.mock('../src/utils/config');
-vi.mock('../src/utils/git', () => ({
+vi.mock('../src/utils/git-base', () => ({
+  getRepoStorageRoot: () => '/mock/repo/root',
+  getMainRepoRoot: () => '/mock/repo/main'
+}));
+vi.mock('../src/utils/git-worktree', () => ({
   getRepoStorageRoot: () => '/mock/repo/root',
   getMainRepoRoot: () => '/mock/repo/main'
 }));

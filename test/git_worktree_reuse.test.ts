@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
-import { createWorktree, getWorktreePath, removeWorktree, getMainRepoRoot } from '../src/utils/git';
+import { getMainRepoRoot } from '../src/utils/git-base';
+import { createWorktree, getWorktreePath, removeWorktree } from '../src/utils/git-worktree';
 
 describe('Worktree Reuse and Sync', () => {
   const taskId = 'test_reuse_task_123';

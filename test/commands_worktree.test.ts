@@ -5,7 +5,10 @@ import { worktreeAddCommand } from '../src/commands/worktree';
 
 vi.mock('fs/promises');
 vi.mock('child_process');
-vi.mock('../src/utils/git', () => ({
+vi.mock('../src/utils/git-base', () => ({
+  getMainRepoRoot: vi.fn(() => '/mock/deba')
+}));
+vi.mock('../src/utils/git-worktree', () => ({
   getMainRepoRoot: vi.fn(() => '/mock/deba')
 }));
 

@@ -25,11 +25,18 @@ describe('prompt module', () => {
   });
 
   describe('buildPlanningPrompt', () => {
+    const mockContext = {
+      ingestion: 'mock ingestion',
+      skills: 'mock skills',
+      episodes: 'mock episodes',
+      knowledgePrompt: '### Knowledge: K1'
+    };
+
     it('プロンプトテンプレートに変数を注入してPlanningプロンプトを構築すること', async () => {
       vi.mocked(fs.readFile).mockResolvedValue('{{USER_REQUEST}} {{PROJECT_SUMMARY}} {{SEMANTIC_MEMORY}}');
       vi.mocked(formatKnowledgeForPrompt).mockReturnValue('### Knowledge: K1');
 
-      const result = await buildPlanningPrompt('test request', ['target.ts']);
+      const result = await buildPlanningPrompt('test request', mockContext, ['target.ts']);
 
       expect(result).toContain('test request');
       expect(result).toContain('### Knowledge: K1');
@@ -39,7 +46,7 @@ describe('prompt module', () => {
     it('プロンプトテンプレートの読み込みに失敗した場合、エラーを投げること', async () => {
       vi.mocked(fs.readFile).mockRejectedValueOnce(new Error('ENOENT: file not found'));
 
-      await expect(buildPlanningPrompt('test request'))
+      await expect(buildPlanningPrompt('test request', mockContext))
         .rejects.toThrow('テンプレートファイルの読み込みに失敗しました:');
     });
 
@@ -50,7 +57,8 @@ describe('prompt module', () => {
       });
       vi.mocked(loadRecentEpisodes).mockResolvedValue('Recent Episode content');
 
-      const result = await buildPlanningPrompt('request');
+      const ctxWithEpisode = { ...mockContext, episodes: 'Recent Episode content' };
+      const result = await buildPlanningPrompt('request', ctxWithEpisode);
       expect(result).toContain('Recent Episode content');
     });
   });

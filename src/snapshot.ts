@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import yaml from 'yaml';
-import { getRepoStorageRoot } from './utils/git.js';
+import { getRepoStorageRoot } from './utils/git-base.js';
 
 export interface SnapshotData {
   input: string;

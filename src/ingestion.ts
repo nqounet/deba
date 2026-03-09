@@ -2,7 +2,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { execSync } from 'child_process';
 import { generateContent } from './ai.js';
-import { getMainRepoRoot, getRepoStorageRoot } from './utils/git.js';
+import { getMainRepoRoot, getRepoStorageRoot } from './utils/git-base.js';
 import { buildIngestionPrompt } from './prompt.js';
 import { loadConfig } from './utils/config.js';
 

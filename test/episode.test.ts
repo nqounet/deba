@@ -2,10 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { saveEpisode, EpisodeData } from '../src/episode';
-import { getRepoStorageRoot } from '../src/utils/git';
+import { getRepoStorageRoot } from '../src/utils/git-base';
 
 // モックの設定
-vi.mock('../src/utils/git', () => ({
+vi.mock('../src/utils/git-base', () => ({
+  getRepoStorageRoot: vi.fn(() => '/mock/repo')
+}));
+vi.mock('../src/utils/git-worktree', () => ({
   getRepoStorageRoot: vi.fn(() => '/mock/repo')
 }));
 vi.mock('fs/promises');

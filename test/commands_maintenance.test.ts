@@ -4,7 +4,12 @@ import * as path from 'path';
 import * as os from 'os';
 
 // モックを最優先で定義 (トップレベル定数への対策)
-vi.mock('../src/utils/git', () => ({
+vi.mock('../src/utils/git-base', () => ({
+  getRepoStorageRoot: vi.fn(() => '/mock/repo'),
+  getMainRepoRoot: vi.fn(() => '/mock/main'),
+  cleanWorktrees: vi.fn()
+}));
+vi.mock('../src/utils/git-worktree', () => ({
   getRepoStorageRoot: vi.fn(() => '/mock/repo'),
   getMainRepoRoot: vi.fn(() => '/mock/main'),
   cleanWorktrees: vi.fn()
@@ -27,7 +32,7 @@ import * as cleanUtils from '../src/utils/clean';
 import * as skills from '../src/skills';
 import * as growthLog from '../src/growthLog';
 import * as ai from '../src/ai';
-import { cleanWorktrees } from '../src/utils/git';
+import { cleanWorktrees } from '../src/utils/git-worktree';
 
 describe('commands/maintenance module', () => {
   const mockLog = vi.spyOn(console, 'log').mockImplementation(() => {});

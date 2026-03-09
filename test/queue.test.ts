@@ -11,7 +11,10 @@ import {
 
 // モックの設定
 vi.mock('fs/promises');
-vi.mock('../src/utils/git', () => ({
+vi.mock('../src/utils/git-base', () => ({
+  getRepoStorageRoot: () => '/mock/repo/root'
+}));
+vi.mock('../src/utils/git-worktree', () => ({
   getRepoStorageRoot: () => '/mock/repo/root'
 }));
 

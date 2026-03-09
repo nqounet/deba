@@ -5,7 +5,7 @@ import { validatePlanning } from '../validator.js';
 import { validateAndBuildBatches } from '../dag.js';
 import { executeBatches } from '../runner.js';
 import { listSkills as listSkillsInfo } from '../skills.js';
-import { createWorktree } from '../utils/git.js';
+import { createWorktree } from '../utils/git-worktree.js';
 import { moveAllSteps } from '../utils/queue.js';
 import { loadConfig } from '../utils/config.js';
 import { executePlanning } from '../services/planning.js';

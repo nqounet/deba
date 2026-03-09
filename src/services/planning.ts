@@ -4,6 +4,10 @@ import { buildPlanningPrompt, buildRepairPrompt } from '../prompt.js';
 import { extractAndParseYaml } from '../yamlParser.js';
 import { validatePlanning } from '../validator.js';
 import { loadConfig } from '../utils/config.js';
+import { loadSkills } from '../skills.js';
+import { searchKnowledge, formatKnowledgeForPrompt } from '../knowledge.js';
+import { loadIngestion } from '../ingestion.js';
+import { loadRecentEpisodes } from '../episode.js';
 
 export interface PlanningResult {
   yamlRaw: string;
@@ -14,7 +18,30 @@ export interface PlanningResult {
 
 export async function executePlanning(taskId: string, request: string, options: { file?: string[] }): Promise<PlanningResult> {
   console.log('Building Planning prompt...');
-  const initialPrompt = await buildPlanningPrompt(request, options.file);
+
+  const ingestion = await loadIngestion();
+  const skills = await loadSkills();
+  const episodes = await loadRecentEpisodes();
+
+  const searchKeywords = request
+    .split(/[\s,，.．、。]+/)
+    .filter(w => w.length > 1 && !/^(あ|い|う|え|お|は|の|に|を|と|が|で|も)$/.test(w));
+  const allKeywords = Array.from(new Set([...searchKeywords, request]));
+  const uniqueKnowledgeResults = await searchKnowledge(allKeywords);
+
+  if (uniqueKnowledgeResults.length > 0) {
+    console.log(`💡 知識ベース(SKR)から ${uniqueKnowledgeResults.length} 件の知見を注入しました (Top: ${uniqueKnowledgeResults[0].content.summary})`);
+  }
+  const knowledgePrompt = formatKnowledgeForPrompt(uniqueKnowledgeResults.slice(0, 5));
+
+  const context = {
+    ingestion,
+    skills,
+    episodes,
+    knowledgePrompt,
+  };
+
+  const initialPrompt = await buildPlanningPrompt(request, context, options.file);
   const config = await loadConfig();
 
   let yamlRaw = '';

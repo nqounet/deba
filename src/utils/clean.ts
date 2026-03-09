@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { getRepoStorageRoot } from './git.js';
+import { getRepoStorageRoot } from './git-base.js';
 
 /**
  * スナップショットディレクトリのリストを受け取り、指定した日数より古いディレクトリ名を返す。

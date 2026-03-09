@@ -3,18 +3,8 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { 
-  getRemoteOriginUrl, 
-  getRepoStorageRoot, 
-  getMainRepoRoot, 
-  getWorktreePath,
-  getWorktreesToClean,
-  createWorktree,
-  removeWorktree,
-  mergeWorktree,
-  cleanWorktrees,
-  __resetMainRepoRootCache
-} from '../src/utils/git';
+import { getRepoStorageRoot, getMainRepoRoot, __resetMainRepoRootCache, getRemoteOriginUrl } from '../src/utils/git-base';
+import { getWorktreePath, getWorktreesToClean, createWorktree, removeWorktree, mergeWorktree, cleanWorktrees } from '../src/utils/git-worktree';
 
 vi.mock('child_process');
 vi.mock('fs');

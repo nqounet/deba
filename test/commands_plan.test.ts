@@ -13,6 +13,13 @@ vi.mock('../src/prompt', () => ({
 vi.mock('../src/utils/queue');
 vi.mock('../src/utils/config');
 vi.mock('../src/snapshot');
+vi.mock('../src/skills', () => ({ loadSkills: vi.fn().mockResolvedValue('') }));
+vi.mock('../src/knowledge', () => ({
+  searchKnowledge: vi.fn().mockResolvedValue([]),
+  formatKnowledgeForPrompt: vi.fn().mockReturnValue('')
+}));
+vi.mock('../src/ingestion', () => ({ loadIngestion: vi.fn().mockResolvedValue('') }));
+vi.mock('../src/episode', () => ({ loadRecentEpisodes: vi.fn().mockResolvedValue('') }));
 
 describe('commands/plan module', () => {
   beforeEach(() => {
@@ -35,7 +42,7 @@ describe('commands/plan module', () => {
 
       await planCommand('user request', { file: [] });
 
-      expect(prompt.buildPlanningPrompt).toHaveBeenCalledWith('user request', []);
+      expect(prompt.buildPlanningPrompt).toHaveBeenCalledWith('user request', expect.any(Object), []);
       expect(ai.generateContent).toHaveBeenCalledWith('prompt text', { provider: 'gemini', model: 'planning-model' });
       expect(queue.enqueueStep).toHaveBeenCalled();
     });
