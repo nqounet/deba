@@ -2,6 +2,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as readline from 'readline';
 import * as os from 'os';
+import { execSync } from 'child_process';
 import { listSkills as listSkillsInfo, promoteToSkill } from '../skills.js';
 import { getMainRepoRoot, getRepoStorageRoot } from '../utils/git-base.js';
 import { cleanWorktrees } from '../utils/git-worktree.js';
@@ -29,8 +30,35 @@ export async function installCommand() {
   console.log('🚀 Deba のセットアップを開始します...');
   await setupConfigCommand();
   await setupSkillCommand();
+  await setupSKRCommand();
   await setupDirectoriesCommand();
   console.log('🎉 セットアップが完了しました。');
+}
+
+export async function setupSKRCommand() {
+  const skrDir = path.join(os.homedir(), '.agents', 'skills', 'semantic-knowledge-repository');
+  try {
+    await fs.access(skrDir);
+    console.log('✅ semantic-knowledge-repository は既にインストールされています。');
+  } catch (error: any) {
+    if (error.code !== 'ENOENT') {
+      console.error(`❌ エラー: semantic-knowledge-repository ディレクトリへのアクセスに失敗しました:`, error.message);
+      return;
+    }
+    
+    console.log('📦 semantic-knowledge-repository をダウンロードしています...');
+    try {
+      const targetDir = path.join(os.homedir(), '.agents', 'skills');
+      await fs.mkdir(targetDir, { recursive: true });
+      execSync('git clone https://github.com/nqounet/semantic-knowledge-repository.git', {
+        cwd: targetDir,
+        stdio: 'inherit'
+      });
+      console.log('✅ semantic-knowledge-repository をインストールしました。');
+    } catch (cloneError: any) {
+      console.error(`❌ エラー: semantic-knowledge-repository のインストールに失敗しました:`, cloneError.message);
+    }
+  }
 }
 
 export async function setupDirectoriesCommand() {
