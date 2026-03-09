@@ -53,6 +53,7 @@ describe('commands/run module', () => {
         text: '```json\n' + JSON.stringify(validPhaseA) + '\n```',
         meta: {}
       });
+      vi.mocked(fs.readdir).mockResolvedValue([]);
 
       await runCommand('request', {});
 
@@ -64,6 +65,7 @@ describe('commands/run module', () => {
   describe('runPlanCommand', () => {
     it('既存の計画ファイルを読み込んで実行すること', async () => {
       vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(validPhaseA));
+      vi.mocked(fs.readdir).mockResolvedValue([]);
       
       await runPlanCommand('plan.json');
 

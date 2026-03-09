@@ -38,23 +38,24 @@ snapshots/
 | **Sprint 3** | ✅ 完了 | `deba execute` (Execution: 実装実行) |
 | **Sprint 4** | ✅ 完了 | `deba run` (Planning→Execution 結合, Git Worktree 隔離) |
 | **Sprint 5** | ✅ 完了 | `deba review` (Phase C), Episode 記録, 成長ログ |
-| **Sprint 6** | 🚀 進行中 | スキル整理 (`consolidate-skills`), コンテキスト注入 |
+| **Sprint 6** | ✅ 完了 | スキル整理 (`consolidate-skills`), コンテキスト注入 |
+| **Sprint 7** | 🚀 進行中 | リファクタリング（モジュール間結合の疎結合化、テストコードの共通化など）、安定性の向上 |
 
 ---
 
 ## 2. 各スプリントの詳細（直近の進捗）
 
-### Sprint 4: Planning → B 結合 (✅ 完了)
-- **隔離環境の実装**: `.worktrees/` ディレクトリ内での Git Worktree 運用。メイン作業ディレクトリを汚さない実行環境を構築。
-- **一気通貫実行**: 計画から実装、マージまでのオートメーション。
-
 ### Sprint 5: Phase C とエピソード記録 (✅ 完了)
 - **フィードバックループ**: `deba review` による人間との対話的な学び抽出。
 - **脳の構造化**: `brain/episodes/` への詳細記録と `brain/growth_log/` への集約。
 
-### Sprint 6: 成長サイクル統合 (🚀 進行中)
+### Sprint 6: 成長サイクル統合 (✅ 完了)
 - **スキル自動整理**: `maintenance consolidate-skills` による、蓄積された箇条書き規約の LLM によるリファクタリング。
 - **コンテキスト注入**: 過去の学び（意味記憶）を Planning のプロンプトに動的に注入し、再発防止を実現。
+
+### Sprint 7: リファクタリングと安定性向上 (🚀 進行中)
+- **内部構造の改善**: テストコードの整理、過剰に密結合したモジュールの分離。
+- **既知の課題の解消**: エッジケースでのエラーハンドリング（Git Worktree 操作の失敗時など）の堅牢化。
 
 ---
 

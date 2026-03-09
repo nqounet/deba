@@ -34,12 +34,14 @@ describe('commands/worker module', () => {
   it('workerCommand: 1回実行して待機または終了すること', async () => {
     // タスクなしのケース
     vi.mocked(fs.readdir).mockResolvedValue([] as any);
+    vi.mocked(fs.stat).mockResolvedValue({ mtimeMs: Date.now() } as any);
     await workerCommand({ once: true });
     expect(queue.initQueueDirs).toHaveBeenCalled();
   });
 
   it('workerCommand: タスクがある場合に実行すること', async () => {
     vi.mocked(fs.readdir).mockResolvedValue(['task1.json'] as any);
+    vi.mocked(fs.stat).mockResolvedValue({ mtimeMs: Date.now() } as any);
     vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify({ taskId: 't1', id: 1, description: 'desc' }));
     vi.mocked(runner.executeStep).mockResolvedValue({ text: 'code' } as any);
     vi.mocked(ai.generateContent).mockResolvedValue({ text: 'suggestion', meta: {} } as any);
