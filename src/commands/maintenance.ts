@@ -53,7 +53,7 @@ export async function setupDirectoriesCommand() {
 }
 
 export async function setupSkillCommand() {
-  const sourcePath = path.join(getMainRepoRoot(), 'SKILL.md');
+  const sourcePath = path.join(getMainRepoRoot(), 'skills', 'deba', 'SKILL.md');
   const targetDir = path.join(os.homedir(), '.agents', 'skills', 'deba');
   const targetPath = path.join(targetDir, 'SKILL.md');
 

@@ -77,7 +77,7 @@ npm run deba -- maintenance promote
 | `deba maintenance skills-promote <rule>` | ルール文字列を直接スキル化 | `--project <name>`（既定: `default`） |
 | `deba maintenance promote` | 承認待ち提案・学びを対話形式で昇格 | `-y, --yes` |
 | `deba maintenance consolidate-skills` | 既存スキルファイルを統合・整理 | なし |
-| `deba maintenance setup-skill` | プロジェクト `SKILL.md` を `~/.agents/skills/deba/SKILL.md` にインストール | なし |
+| `deba maintenance setup-skill` | プロジェクト `skills/deba/SKILL.md` を `~/.agents/skills/deba/SKILL.md` にインストール | なし |
 | `deba maintenance setup-config` | `~/.deba/config.toml` を初期化 | なし |
 
 ## 出力ログ例（実装準拠）
@@ -174,7 +174,7 @@ npm test
 
 ## メンテナンス上の重要事項
 
-- コマンドを追加・変更したら、必ず `SKILL.md` を更新
+- コマンドを追加・変更したら、必ず `skills/deba/SKILL.md` を更新
 - 更新後に `npm run deba -- maintenance setup-skill` を実行して反映
 - `test/skill_md.test.ts` でコマンド一覧との整合性を確認
 

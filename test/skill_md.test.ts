@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
-describe('SKILL.md consistency', () => {
+describe('skills/deba/SKILL.md consistency', () => {
   it('should contain all implemented CLI commands', async () => {
-    const skillMdPath = path.join(__dirname, '../SKILL.md');
+    const skillMdPath = path.join(__dirname, '../skills/deba/SKILL.md');
     const skillMd = await fs.readFile(skillMdPath, 'utf-8');
 
     // src/cli.ts で公開している全コマンド

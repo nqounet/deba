@@ -54,7 +54,7 @@ describe('commands/maintenance module', () => {
     expect(fs.mkdir).toHaveBeenCalled();
   });
 
-  it('setupSkillCommand: SKILL.md をコピーすること', async () => {
+  it('setupSkillCommand: skills/deba/SKILL.md をコピーすること', async () => {
     vi.mocked(fs.access).mockResolvedValue(undefined);
     await maintenance.setupSkillCommand();
     expect(fs.copyFile).toHaveBeenCalled();
