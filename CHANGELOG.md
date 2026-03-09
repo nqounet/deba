@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.6] - 2026-03-10
+### Changed
+- Refactored prompt handling by decoupling `prompt.ts` with dependency injection.
+- Extracted logic from CLI commands into services for better modularity (Review, Worker).
+- Refactored Git utilities by removing `utils/git.ts` re-export and using direct imports.
+- Updated `AGENTS.md` to include Git/GitHub operation restrictions.
+- Updated documentation for installation and new configuration structure.
+### Fixed
+- Addressed code review feedback on prompt injection and readability.
+- Added a note in `README.md` about commenting out configuration.
+
 ## [0.11.5] - 2026-03-09
 ### Changed
 - Refactored Phase A/B to Planning/Execution and introduced the Trust module for improved task validation.
