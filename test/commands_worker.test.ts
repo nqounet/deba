@@ -23,6 +23,7 @@ describe('commands/worker module', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(queue.getQueueDirPath).mockReturnValue('/mock/queue');
+    vi.mocked(fs.stat).mockResolvedValue({ mtimeMs: Date.now() } as any);
     vi.mocked(configUtils.loadConfig).mockResolvedValue({
       ai: {
         planning: { provider: 'gemini', model: 'planning-model' },

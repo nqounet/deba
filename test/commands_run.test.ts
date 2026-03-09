@@ -44,6 +44,7 @@ describe('commands/run module', () => {
         execution: { provider: 'gemini', model: 'execution-model' }
       }
     } as any);
+    vi.mocked(fs.readdir).mockResolvedValue([]);
   });
 
   describe('runCommand', () => {
