@@ -13,7 +13,7 @@ Planning (planning), Execution (implementation), and Phase C (review and learnin
 - Install dependencies: `npm install`
 - Build before running locally: `npm run build`
 - Install and authenticate an LLM CLI (`gemini` by default; `codex` is also supported via config)
-- Initialize config when needed: `deba maintenance setup-config`
+- Initialize config and install skill when needed: `deba install`
 
 ## Recommended Workflow
 
@@ -56,6 +56,7 @@ If a task (e.g., `deba run`) fails or halts during the execution phase (Executio
 
 | Command | Purpose | Important Options |
 | --- | --- | --- |
+| `deba install` | Initial setup: Initialize config and install the skill. | None |
 | `deba chat <message>` | Send a direct prompt to the configured LLM and store a snapshot. | None |
 | `deba plan <request>` | Run Planning only: generate and parse a structured implementation plan. | `--file <path...>` to include one or more context files |
 | `deba worker` | Start queue worker to execute queued steps asynchronously. | None |
@@ -82,9 +83,9 @@ If a task (e.g., `deba run`) fails or halts during the execution phase (Executio
 
 - Config file: `~/.deba/config.toml`
 - Main keys:
-  - `ai.provider` (`gemini` or `codex`)
-  - `ai.model` (default planning model)
-  - `ai.flash_model` (lighter/faster model for supporting tasks)
+  - `ai.planning.provider` and `ai.execution.provider` (`gemini` or `codex`)
+  - `ai.planning.model` (model for planning tasks)
+  - `ai.execution.model` (lighter/faster model for execution tasks)
 
 ## Memory Model
 
@@ -95,4 +96,4 @@ If a task (e.g., `deba run`) fails or halts during the execution phase (Executio
 ## Operational Notes
 
 - Prefer local development invocation: `npm run deba -- <command>`
-- Use `deba maintenance setup-skill` after updating this file to refresh installed agent metadata
+- Use `deba install` or `deba maintenance setup-skill` after updating this file to refresh installed agent metadata

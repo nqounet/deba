@@ -29,11 +29,8 @@ cd deba
 npm install
 npm run build
 
-# 設定ファイルを初期化（未作成時のみ）
-npm run deba -- maintenance setup-config
-
-# Deba スキル定義を ~/.agents/skills/deba/SKILL.md に反映
-npm run deba -- maintenance setup-skill
+# 初期セットアップ（設定ファイルの初期化とスキルのインストール）
+npm run deba -- install
 ```
 
 ## 基本的な使い方
@@ -58,6 +55,7 @@ npm run deba -- maintenance promote
 
 | Command | 説明 | 主なオプション |
 | --- | --- | --- |
+| `deba install` | 初期セットアップ: 設定ファイルの作成とスキルのインストールを行う | なし |
 | `deba chat <message>` | LLM に直接メッセージを送り、応答を表示・スナップショット保存 | なし |
 | `deba plan <request>` | Phase A（計画生成）のみ実行 | `--file <path...>` |
 | `deba worker` | キュー (`todo`) を監視して非同期実行 | なし |
@@ -156,13 +154,16 @@ Deba では、LLM との通信およびデータの保存において、**「主
 └── knowledges/*.json
 ```
 
-`setup-config` で生成される既定値:
+`setup-config` や `install` で生成される既定値:
 
 ```toml
-[ai]
-provider = "gemini"
-model = "gemini-2.0-flash-exp"
-flash_model = "gemini-2.0-flash-exp"
+[ai.planning]
+# provider = "gemini"
+# model = ""
+
+[ai.execution]
+# provider = "gemini"
+# model = ""
 ```
 
 ## 開発
