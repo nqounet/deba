@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as fs from 'fs/promises';
 import { reviewCommand } from '../src/commands/review';
-import * as gitUtils from '../src/utils/git';
+import * as gitWt from '../src/utils/git-worktree';
 import * as episode from '../src/episode';
 import * as growthLog from '../src/growthLog';
 import * as ai from '../src/ai';
@@ -10,7 +10,14 @@ import * as knowledge from '../src/knowledge';
 import * as configUtils from '../src/utils/config';
 
 vi.mock('fs/promises');
-vi.mock('../src/utils/git', () => ({
+vi.mock('../src/utils/git-base', () => ({
+  getRepoStorageRoot: vi.fn(() => '/mock/repo'),
+  getWorktreePath: vi.fn(() => '/mock/wt'),
+  mergeWorktree: vi.fn(),
+  removeWorktree: vi.fn(),
+  getMainRepoRoot: vi.fn(() => '/mock/main')
+}));
+vi.mock('../src/utils/git-worktree', () => ({
   getRepoStorageRoot: vi.fn(() => '/mock/repo'),
   getWorktreePath: vi.fn(() => '/mock/wt'),
   mergeWorktree: vi.fn(),
@@ -46,8 +53,8 @@ describe('commands/review module', () => {
     await reviewCommand('task1', { approve: true, yes: true });
 
     expect(episode.saveEpisode).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
-    expect(gitUtils.mergeWorktree).toHaveBeenCalledWith('task1');
-    expect(gitUtils.removeWorktree).toHaveBeenCalled();
+    expect(gitWt.mergeWorktree).toHaveBeenCalledWith('task1');
+    expect(gitWt.removeWorktree).toHaveBeenCalled();
   });
 
   it('非承認時: Reflectionを実行し、学びを保存すること', async () => {

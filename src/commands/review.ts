@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises';
 import * as readline from 'readline';
 import yaml from 'yaml';
-import { getWorktreePath, mergeWorktree, removeWorktree } from '../utils/git.js';
+import { getWorktreePath, mergeWorktree, removeWorktree } from '../utils/git-worktree.js';
 import { getTrustLevelName } from '../trust.js';
 import { getReviewContext, processReviewResult, executeReflection } from '../services/review.js';
 

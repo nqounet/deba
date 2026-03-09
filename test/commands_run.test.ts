@@ -24,7 +24,12 @@ vi.mock('../src/knowledge', () => ({
 }));
 vi.mock('../src/ingestion', () => ({ loadIngestion: vi.fn().mockResolvedValue('') }));
 vi.mock('../src/episode', () => ({ loadRecentEpisodes: vi.fn().mockResolvedValue('') }));
-vi.mock('../src/utils/git', () => ({
+vi.mock('../src/utils/git-base', () => ({
+  getMainRepoRoot: vi.fn().mockReturnValue('/mock/root'),
+  getRepoStorageRoot: vi.fn().mockReturnValue('/mock/storage'),
+  createWorktree: vi.fn().mockReturnValue('/mock/worktree')
+}));
+vi.mock('../src/utils/git-worktree', () => ({
   getMainRepoRoot: vi.fn().mockReturnValue('/mock/root'),
   getRepoStorageRoot: vi.fn().mockReturnValue('/mock/storage'),
   createWorktree: vi.fn().mockReturnValue('/mock/worktree')

@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { getRepoStorageRoot } from './utils/git.js';
+import { getRepoStorageRoot } from './utils/git-base.js';
 
 const BRAIN_DIR = path.join(getRepoStorageRoot(), 'brain');
 const GROWTH_LOG_DIR = path.join(BRAIN_DIR, 'growth_log');

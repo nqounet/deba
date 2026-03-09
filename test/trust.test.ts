@@ -9,7 +9,10 @@ vi.mock('fs/promises', () => ({
   mkdir: vi.fn()
 }));
 
-vi.mock('../src/utils/git', () => ({
+vi.mock('../src/utils/git-base', () => ({
+  getRepoStorageRoot: () => '/mock/repo'
+}));
+vi.mock('../src/utils/git-worktree', () => ({
   getRepoStorageRoot: () => '/mock/repo'
 }));
 

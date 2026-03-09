@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { getWorktreesToClean } from '../src/utils/git';
+import { getWorktreesToClean } from '../src/utils/git-worktree';
 
 describe('getWorktreesToClean', () => {
   it('deba-wt- で始まる worktree のリストを抽出できるべき', () => {

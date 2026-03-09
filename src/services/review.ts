@@ -7,7 +7,7 @@ import { extractAndParseYaml } from '../yamlParser.js';
 import { saveEpisode } from '../episode.js';
 import { appendGrowthLog } from '../growthLog.js';
 import { saveKnowledge, Knowledge } from '../knowledge.js';
-import { getRepoStorageRoot } from '../utils/git.js';
+import { getRepoStorageRoot } from '../utils/git-base.js';
 import { loadConfig } from '../utils/config.js';
 import { updateTrust, getTrustData, calculateTrustLevel, TrustData } from '../trust.js';
 

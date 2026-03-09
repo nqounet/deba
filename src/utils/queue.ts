@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { getRepoStorageRoot } from './git.js';
+import { getRepoStorageRoot } from './git-base.js';
 
 /**
  * キューの状態を表すディレクトリ名の定義

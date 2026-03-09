@@ -1,7 +1,7 @@
 import { execSync } from 'child_process';
 import path from 'path';
 import fs from 'fs/promises';
-import { getMainRepoRoot } from '../utils/git.js';
+import { getMainRepoRoot } from '../utils/git-base.js';
 
 /**
  * リポジトリと起点になるブランチを指定して、deba 内部の worktrees ディレクトリに Worktree を作成する。

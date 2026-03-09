@@ -3,12 +3,15 @@ import * as fs from 'fs/promises';
 import { workerCommand } from '../src/commands/worker';
 import * as queue from '../src/utils/queue';
 import * as runner from '../src/runner';
-import * as gitUtils from '../src/utils/git';
 import * as ai from '../src/ai';
 import * as configUtils from '../src/utils/config';
 
 vi.mock('fs/promises');
-vi.mock('../src/utils/git', () => ({
+vi.mock('../src/utils/git-base', () => ({
+  getRepoStorageRoot: vi.fn(() => '/mock/repo'),
+  createWorktree: vi.fn(() => '/mock/wt')
+}));
+vi.mock('../src/utils/git-worktree', () => ({
   getRepoStorageRoot: vi.fn(() => '/mock/repo'),
   createWorktree: vi.fn(() => '/mock/wt')
 }));

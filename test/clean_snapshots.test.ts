@@ -4,7 +4,10 @@ import * as path from 'path';
 import { getSnapshotsToClean, cleanSnapshots } from '../src/utils/clean';
 
 vi.mock('fs/promises');
-vi.mock('../src/utils/git', () => ({
+vi.mock('../src/utils/git-base', () => ({
+  getRepoStorageRoot: vi.fn(() => '/mock/repo')
+}));
+vi.mock('../src/utils/git-worktree', () => ({
   getRepoStorageRoot: vi.fn(() => '/mock/repo')
 }));
 

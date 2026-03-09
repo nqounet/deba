@@ -3,7 +3,10 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { loadSkills, listSkills, promoteToSkill } from '../src/skills';
 
-vi.mock('../src/utils/git', () => ({
+vi.mock('../src/utils/git-base', () => ({
+  getRepoStorageRoot: vi.fn(() => '/mock/repo')
+}));
+vi.mock('../src/utils/git-worktree', () => ({
   getRepoStorageRoot: vi.fn(() => '/mock/repo')
 }));
 vi.mock('fs/promises');
