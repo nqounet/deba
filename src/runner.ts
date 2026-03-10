@@ -9,7 +9,7 @@ import { loadConfig } from './utils/config.js';
 import { spinner } from './utils/spinner.js';
 import { parseCodeBlocks } from './utils/parser.js';
 import { applyFileChange } from './utils/fs.js';
-import { sanitizeTestCommand } from './utils/sanitize.js';
+import { sanitizeTestCommand, scrubErrorMessage } from './utils/sanitize.js';
 
 /**
  * 指定したテストコマンド（またはデフォルトの npm test）を実行し、その結果を返す。
@@ -153,7 +153,8 @@ export async function executeStep(step: any, cautions: any[], taskId: string, wo
       console.log(`\n❌ Step ${step.id} test failed. Attempting self-repair (Attempt ${retryCount + 1}/${MAX_RETRIES})...`);
       
       const rawError = testResult.stderr || testResult.stdout;
-      const truncatedError = rawError.length > 2000 ? rawError.substring(0, 1000) + '\n...[truncated]...\n' + rawError.substring(rawError.length - 1000) : rawError;
+      const scrubbedError = sanitizeTestCommand ? scrubErrorMessage(rawError) : rawError; // Use scrubErrorMessage
+      const truncatedError = scrubbedError.length > 2000 ? scrubbedError.substring(0, 1000) + '\n...[truncated]...\n' + scrubbedError.substring(scrubbedError.length - 1000) : scrubbedError;
       const testErrorMessage = `前回のステップで適用したコードにおいて、テスト '${step.test_command}' が失敗しました。以下のエラーメッセージをもとにコードを修正してください:\n${truncatedError}`;
       
       // Prevent context explosion by keeping only original cautions (filtering out previous test failures)
@@ -257,7 +258,8 @@ export async function executeBatches(batches: StepBatch[], cautions: any[], task
       // ここでは簡易的に直前のバッチの全ステップにエラー情報をフィードバックしてリトライする
       
       const rawError = testResult.stderr || testResult.stdout;
-      const truncatedError = rawError.length > 2000 ? rawError.substring(0, 1000) + '\n...[truncated]...\n' + rawError.substring(rawError.length - 1000) : rawError;
+      const scrubbedError = sanitizeTestCommand ? scrubErrorMessage(rawError) : rawError; // Use scrubErrorMessage
+      const truncatedError = scrubbedError.length > 2000 ? scrubbedError.substring(0, 1000) + '\n...[truncated]...\n' + scrubbedError.substring(scrubbedError.length - 1000) : scrubbedError;
       
       const testErrorMessage = `バッチ実行後の全体テスト 'npm test' が失敗しました。このバッチで変更した内容に問題がある可能性があります。以下のエラーを修正してください:\n${truncatedError}`;
       

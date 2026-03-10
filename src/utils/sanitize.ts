@@ -73,3 +73,34 @@ export function validateFilePaths(filePaths: string[], projectRoot: string): str
 
   return validPaths;
 }
+
+/**
+ * 外部のLLMにエラーメッセージを送信する前に、環境変数や絶対パスなどの機密情報をスクラビング（マスク）する。
+ *
+ * @param errorMessage スクラビング対象のエラーメッセージ
+ * @param projectRoot マスク処理の基準となるプロジェクトルートパス (デフォルト: process.cwd())
+ * @returns スクラビングされた安全なエラーメッセージ
+ */
+export function scrubErrorMessage(errorMessage: string, projectRoot: string = process.cwd()): string {
+  if (!errorMessage) return '';
+  let scrubbed = errorMessage;
+
+  // 1. プロジェクトルートの絶対パスを秘匿化
+  const rootRegex = new RegExp(projectRoot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+  scrubbed = scrubbed.replace(rootRegex, '<PROJECT_ROOT>');
+
+  // 2. ホームディレクトリの絶対パスを秘匿化
+  const homeDir = process.env.HOME || process.env.USERPROFILE;
+  if (homeDir) {
+    const homeRegex = new RegExp(homeDir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    scrubbed = scrubbed.replace(homeRegex, '<HOME>');
+  }
+
+  // 3. よくある機密情報のパターン（APIキー、トークンなど）の簡易マスク（必要に応じて拡張）
+  // 便宜上、sk-[A-Za-z0-9]{20,} や xoxb-[A-Za-z0-9\-]+ などを伏せる
+  scrubbed = scrubbed.replace(/sk-[A-Za-z0-9]{20,}/g, 'sk-***');
+  scrubbed = scrubbed.replace(/xox[bap]-[A-Za-z0-9\-]{10,}/g, 'xox?-***');
+  scrubbed = scrubbed.replace(/(gh[pousr]_[A-Za-z0-9]{36,})/g, 'gh_***');
+
+  return scrubbed;
+}
