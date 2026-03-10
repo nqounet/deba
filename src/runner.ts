@@ -4,11 +4,12 @@ import { generateContent } from './ai.js';
 import { buildExecutionPrompt } from './prompt.js';
 import { saveSnapshot } from './snapshot.js';
 import { StepBatch } from './dag.js';
-import { exec } from 'child_process';
+import { spawn } from 'child_process';
 import { loadConfig } from './utils/config.js';
 import { spinner } from './utils/spinner.js';
 import { parseCodeBlocks } from './utils/parser.js';
 import { applyFileChange } from './utils/fs.js';
+import { sanitizeTestCommand } from './utils/sanitize.js';
 
 /**
  * 指定したテストコマンド（またはデフォルトの npm test）を実行し、その結果を返す。
@@ -17,19 +18,46 @@ import { applyFileChange } from './utils/fs.js';
  * @returns Promise<{ stdout: string, stderr: string, code: number | null }> テストの標準出力と標準エラー出力
  */
 export function executeTests(workingDir?: string, command?: string): Promise<{ stdout: string, stderr: string, code: number | null }> {
-  const testCmd = command || 'npm test';
+  let testCmd = command || 'npm test';
+  
+  try {
+    testCmd = sanitizeTestCommand(testCmd);
+  } catch (e: any) {
+    spinner.fail(`Test validation failed: ${e.message}`);
+    return Promise.resolve({ stdout: '', stderr: e.message, code: 1 });
+  }
+
   spinner.start(`Running test: ${testCmd}...`);
   
-  return new Promise((resolve, reject) => {
-    exec(testCmd, { cwd: workingDir || process.cwd() }, (error, stdout, stderr) => {
-      if (error) {
-        spinner.fail(`Test failed: ${testCmd}`);
-        // エラーが発生した場合も、stdoutとstderrは返す
-        resolve({ stdout, stderr, code: error.code ?? null });
-      } else {
+  return new Promise((resolve) => {
+    const args = testCmd.split(/\s+/);
+    const cmd = args.shift()!;
+
+    const child = spawn(cmd, args, { cwd: workingDir || process.cwd(), shell: false });
+
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+
+    child.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    child.on('error', (error) => {
+      spinner.fail(`Test failed: ${testCmd} (${error.message})`);
+      resolve({ stdout, stderr: stderr + error.message, code: 1 });
+    });
+
+    child.on('close', (code) => {
+      if (code === 0) {
         spinner.succeed(`Test passed: ${testCmd}`);
-        resolve({ stdout, stderr, code: 0 });
+      } else {
+        spinner.fail(`Test failed: ${testCmd}`);
       }
+      resolve({ stdout, stderr, code });
     });
   });
 }

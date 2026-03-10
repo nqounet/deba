@@ -1,12 +1,18 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { execFileSync } from 'child_process';
+import { validateFilePaths } from './sanitize.js';
 
 /**
  * ディレクトリを確実に作成し、ファイルを書き込む。
  * オプションで Git リポジトリ内であれば git add を実行する。
  */
 export async function applyFileChange(baseDir: string, filePath: string, content: string): Promise<void> {
+  const validPaths = validateFilePaths([filePath], baseDir);
+  if (validPaths.length === 0) {
+    throw new Error(`File path is outside of the base directory: ${filePath}`);
+  }
+
   const absPath = path.resolve(baseDir, filePath);
   
   // ディレクトリが存在しない場合は作成
