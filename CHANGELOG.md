@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.9] - 2026-03-10
+### Changed
+- Updated terminology from Phase A/B/C to Planning/Execution/Review for better alignment with the system's architecture.
+- Updated documentation in `README.md` and `skills/deba/SKILL.md` to reflect these terminology changes and explain the review/learning cycle.
+- Updated tool configuration in `mise.toml`.
+
+## [0.11.8] - 2026-03-10
+### Changed
+- No changes (version bump only).
+
 ## [0.11.7] - 2026-03-10
 ### Added
 - Added `semantic-knowledge-repository` setup to the `maintenance` command.
