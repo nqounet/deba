@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
+import { spawn } from 'child_process';
+import EventEmitter from 'events';
 
 // モックを最優先で定義 (トップレベル定数への対策)
 vi.mock('../src/utils/git-base', () => ({
@@ -19,6 +21,11 @@ vi.mock('os', () => ({
   default: { homedir: vi.fn(() => '/home/user') }
 }));
 vi.mock('fs/promises');
+vi.mock('child_process', () => {
+  return {
+    spawn: vi.fn()
+  };
+});
 vi.mock('../src/utils/clean');
 vi.mock('../src/skills');
 vi.mock('../src/growthLog');
@@ -63,6 +70,48 @@ describe('commands/maintenance module', () => {
     vi.mocked(fs.access).mockResolvedValue(undefined);
     await maintenance.setupSkillCommand();
     expect(fs.copyFile).toHaveBeenCalled();
+  });
+
+  describe('setupSKRCommand', () => {
+    it('SKRが未インストールの場合はgit cloneを実行すること', async () => {
+      const error = new Error('ENOENT') as any;
+      error.code = 'ENOENT';
+      vi.mocked(fs.access).mockRejectedValueOnce(error);
+      
+      const mockSpawnEmitter = new EventEmitter();
+      vi.mocked(spawn).mockReturnValue(mockSpawnEmitter as any);
+      
+      const setupPromise = maintenance.setupSKRCommand();
+      // Ensure the spawn logic is executed before emitting the event
+      await new Promise(resolve => setImmediate(resolve));
+      mockSpawnEmitter.emit('close', 0);
+      await setupPromise;
+      
+      expect(fs.mkdir).toHaveBeenCalledWith(expect.stringContaining('.agents/skills'), { recursive: true });
+      expect(spawn).toHaveBeenCalledWith(
+        'git',
+        ['clone', 'https://github.com/nqounet/semantic-knowledge-repository.git'],
+        expect.any(Object)
+      );
+    });
+
+    it('SKRがインストール済みの場合は何もしないこと', async () => {
+      vi.mocked(fs.access).mockResolvedValue(undefined);
+      
+      await maintenance.setupSKRCommand();
+      
+      expect(spawn).not.toHaveBeenCalled();
+    });
+
+    it('アクセスエラーがENOENT以外の場合はエラーを表示して終了すること', async () => {
+      const error = new Error('EACCES') as any;
+      error.code = 'EACCES';
+      vi.mocked(fs.access).mockRejectedValueOnce(error);
+      
+      await maintenance.setupSKRCommand();
+      
+      expect(spawn).not.toHaveBeenCalled();
+    });
   });
 
   it('setupConfigCommand: configを初期化すること', async () => {
