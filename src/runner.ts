@@ -153,7 +153,7 @@ export async function executeStep(step: any, cautions: any[], taskId: string, wo
       console.log(`\n❌ Step ${step.id} test failed. Attempting self-repair (Attempt ${retryCount + 1}/${MAX_RETRIES})...`);
       
       const rawError = testResult.stderr || testResult.stdout;
-      const scrubbedError = sanitizeTestCommand ? scrubErrorMessage(rawError) : rawError; // Use scrubErrorMessage
+      const scrubbedError = scrubErrorMessage(rawError);
       const truncatedError = scrubbedError.length > 2000 ? scrubbedError.substring(0, 1000) + '\n...[truncated]...\n' + scrubbedError.substring(scrubbedError.length - 1000) : scrubbedError;
       const testErrorMessage = `前回のステップで適用したコードにおいて、テスト '${step.test_command}' が失敗しました。以下のエラーメッセージをもとにコードを修正してください:\n${truncatedError}`;
       
@@ -258,7 +258,7 @@ export async function executeBatches(batches: StepBatch[], cautions: any[], task
       // ここでは簡易的に直前のバッチの全ステップにエラー情報をフィードバックしてリトライする
       
       const rawError = testResult.stderr || testResult.stdout;
-      const scrubbedError = sanitizeTestCommand ? scrubErrorMessage(rawError) : rawError; // Use scrubErrorMessage
+      const scrubbedError = scrubErrorMessage(rawError);
       const truncatedError = scrubbedError.length > 2000 ? scrubbedError.substring(0, 1000) + '\n...[truncated]...\n' + scrubbedError.substring(scrubbedError.length - 1000) : scrubbedError;
       
       const testErrorMessage = `バッチ実行後の全体テスト 'npm test' が失敗しました。このバッチで変更した内容に問題がある可能性があります。以下のエラーを修正してください:\n${truncatedError}`;
