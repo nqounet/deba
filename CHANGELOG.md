@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.12] - 2026-03-10
+### Security & Safety
+- Prevented path traversal in `applyFileChange` by validating that output paths strictly reside within the project boundary.
+- Mitigated OS command injection risks in the test runner by migrating from `child_process.exec` to `spawn` (`shell: false`/`shell: true` depending on OS) and strictly enforcing the `sanitizeTestCommand` whitelist immediately prior to execution.
+- Added automatic scrubbing (`scrubErrorMessage`) to prevent sensitive paths (project root, home directory) and potential secrets (e.g. API keys) within test failure logs from being sent to LLMs during the self-repair loop.
+- Added prompt file filtering to exclude massive/sensitive targets like `.env`, `.git`, `node_modules/`, and lockfiles to prevent context bloat and potential secret leakage.
+
+### Added
+- Added a hard session token limit (approx. 500,000 tokens) with pre-execution estimation in `UsageTracker` to prevent unbounded looping and excessive LLM API costs.
+
 ## [0.11.9] - 2026-03-10
 ### Changed
 - Updated terminology from Phase A/B/C to Planning/Execution/Review for better alignment with the system's architecture.
