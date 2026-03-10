@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as fs from 'fs/promises';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { worktreeAddCommand } from '../src/commands/worktree';
 
 vi.mock('fs/promises');
@@ -27,7 +27,7 @@ describe('commands/worktree module', () => {
 
     await worktreeAddCommand('/target/repo', 'main', { name: 'wt1' });
 
-    expect(execSync).toHaveBeenCalledWith(expect.stringContaining('git worktree add'), expect.objectContaining({ cwd: '/target/repo' }));
+    expect(execFileSync).toHaveBeenCalledWith('git', expect.arrayContaining(['worktree', 'add']), expect.objectContaining({ cwd: '/target/repo' }));
     expect(mockLog).toHaveBeenCalledWith(expect.stringContaining('正常に作成されました'));
   });
 

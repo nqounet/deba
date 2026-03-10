@@ -27,9 +27,9 @@ export async function reviewCommand(taskId: string, options: { yes?: boolean, ap
   try {
     await fs.access(worktreeDir);
     console.log(`\n--- Git Diff from Worktree ---`);
-    const { execSync } = await import('child_process');
+    const { execFileSync } = await import('child_process');
     try {
-      const diff = execSync('git diff HEAD', { cwd: worktreeDir, encoding: 'utf-8' });
+      const diff = execFileSync('git', ['diff', 'HEAD'], { cwd: worktreeDir, encoding: 'utf-8' });
       if (diff.trim()) {
         console.log(diff);
       } else {
