@@ -6,7 +6,7 @@ description: "AI agent CLI for requirements definition, planning, execution, rev
 # Deba Agent
 
 Use Deba to run an end-to-end development lifecycle:
-Planning (planning), Execution (implementation), and Phase C (review and learning).
+Planning (planning), Execution (implementation), and Review (review and learning).
 
 ## Prerequisites
 
@@ -23,13 +23,26 @@ Planning (planning), Execution (implementation), and Phase C (review and learnin
 4. Review and capture learning with `deba review <task_id>`.
 5. Curate and promote learning via `deba maintenance promote` and related maintenance commands.
 
-### Handling Failures and TDD Workflow
+### Review and Learning Cycle
 
-If a task (e.g., `deba run`) fails or halts during the execution phase (Execution), **DO NOT** immediately fix the code manually and commit. You MUST run `deba review <task_id>` to record the failure. Provide a detailed explanation of what went wrong and how it should be fixed as your review feedback. This ensures Deba learns from the mistake, extracts a reusable skill for future tasks, and maintains its growth cycle. After reviewing, you may proceed to fix the issue.
+The `deba review <task_id>` command is critical for Deba's continuous learning. It handles two main scenarios based on the outcome of a task execution:
+
+#### 1. Task Success (Approval)
+When a task is successfully executed and the results are correct:
+- Run `deba review <task_id> --yes` (or explicitly approve it interactively).
+- Deba will record the successful episode, updating its internal "Trust Level" and approval rate.
+- If the task was run in an isolated worktree (e.g., via `run-plan`), Deba will merge the worktree changes into the main branch and remove the temporary worktree.
+
+#### 2. Task Failure or Needs Fix (Reflection)
+If a task (e.g., `deba run`) fails, produces incorrect output, or halts during execution, **DO NOT** immediately fix the code manually and commit.
+- You **MUST** run `deba review <task_id>`.
+- When prompted, provide a detailed explanation of what went wrong, why it failed, and how it should be fixed.
+- **Reflection Process**: Deba uses this feedback to run a self-reflection step via the LLM. It analyzes the failure, extracts "learnings" (proposed rules and best practices), and appends them to the **Growth Log**. It also stores this information in its semantic knowledge base.
+- After reviewing and capturing the knowledge, you may proceed to fix the issue manually or run a new plan.
 
 **Automating Review and Promotion**
-- When a task is confirmed successful by the user, or when you have provided a clear fix and verified the Reflection results as useful, prefer using the `--yes` (or `-y`) option with `review` and `maintenance promote` commands to streamline the growth cycle.
-- Use `--yes` when you are confident that the learning extracted is accurate and aligns with project standards.
+- When a task is confirmed successful by the user, prefer using the `--yes` (or `-y`) option with `deba review` to automatically approve, record the success, and handle worktree merging.
+- To promote the extracted learnings from failed/fixed tasks into permanent skills, use `deba maintenance promote` (with `--yes` if confident). This completes the growth cycle, turning episodic failures into reusable semantic memory.
 
 ## Best Practices & Conventions
 
@@ -65,7 +78,7 @@ If a task (e.g., `deba run`) fails or halts during the execution phase (Executio
 | `deba execute --step <id> --plan <filepath>` | Execute one specific implementation step from a plan file. | `--step <id>`, `--plan <filepath>` are required |
 | `deba run <request>` | Run end-to-end flow: Planning, validation, and batch execution in isolated worktree. | `--file <path...>` to include one or more context files |
 | `deba run-plan <filepath>` | Load an existing JSON/YAML plan and execute it directly. | None |
-| `deba review <task_id>` | Run Phase C review, capture feedback, and update episodic/learning memory. | `-y`, `--yes` for non-interactive approval flow |
+| `deba review <task_id>` | Run review, capture feedback, and update episodic/learning memory. | `-y`, `--yes` for non-interactive approval flow |
 
 ### Maintenance Commands
 

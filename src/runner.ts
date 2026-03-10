@@ -148,7 +148,7 @@ export async function executeStep(step: any, cautions: any[], taskId: string, wo
  * 検証済みのバッチ配列を受け取り、直列（バッチ間）および並列（バッチ内）でタスクを実行する。
  */
 export async function executeBatches(batches: StepBatch[], cautions: any[], taskId: string, workingDir?: string): Promise<void> {
-  console.log('\nStarting Execution Phase (Execution)...');
+  console.log('\nStarting Execution...');
   const completedStepIds = new Set<number>();
   const allStepIds = new Set<number>();
   batches.forEach(b => b.steps.forEach(s => allStepIds.add(s.id)));

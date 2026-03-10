@@ -92,7 +92,7 @@ export async function buildExecutionPrompt(
 }
 
 /**
- * Phase C (Reflection) 向けプロンプトを構築する
+ * Review (Reflection) 向けプロンプトを構築する
  * 修正ありのタスクに対し、LLMに自己評価と学び候補の抽出を求める
  */
 export async function buildReflectionPrompt(
