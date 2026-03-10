@@ -42,7 +42,19 @@ export async function buildPlanningPrompt(request: string, context: PlanningCont
   if (targetFilePaths.length > 0) {
     // パストラバーサル防止: プロジェクトルート外のパスをフィルタリング
     const projectRoot = process.cwd();
-    const safePaths = validateFilePaths(targetFilePaths, projectRoot);
+    const validatedPaths = validateFilePaths(targetFilePaths, projectRoot);
+    
+    // 機密情報（.env, .git等）や不要な巨大ファイル（node_modules, lockファイル等）を排除してリスクとトークン消費を抑制
+    const EXCLUDED_PATTERNS = [
+      /\.env(?:\..+)?$/,
+      /\.git\//,
+      /node_modules\//,
+      /package-lock\.json$/,
+      /yarn\.lock$/,
+      /pnpm-lock\.yaml$/,
+      /\.DS_Store$/
+    ];
+    const safePaths = validatedPaths.filter(p => !EXCLUDED_PATTERNS.some(pattern => pattern.test(p)));
     
     const fileContents: string[] = [];
     for (const filePath of safePaths) {
@@ -55,7 +67,7 @@ export async function buildPlanningPrompt(request: string, context: PlanningCont
         fileContents.push(`--- ${filePath} ---\n※ファイルの読み込み失敗: ${fileError.message}\n`);
       }
     }
-    targetSourceCode = fileContents.join('');
+    targetSourceCode = fileContents.length > 0 ? fileContents.join('') : '※有効な（機密情報を含まない）変更対象ファイルなし';
   }
   template = template.replace(/\{\{TARGET_SOURCE_CODE\}\}/g, targetSourceCode);
   template = template.replace(/\{\{DEPENDENCY_INTERFACES\}\}/g, '※記録なし');

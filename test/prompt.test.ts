@@ -61,6 +61,42 @@ describe('prompt module', () => {
       const result = await buildPlanningPrompt('request', ctxWithEpisode);
       expect(result).toContain('Recent Episode content');
     });
+
+    it('機密情報や巨大なファイルがtarget_filesに含まれていた場合、除外されること', async () => {
+      vi.mocked(fs.readFile).mockImplementation(async (path) => {
+        if (typeof path === 'string' && path.includes('templates/planning.md')) return '{{TARGET_SOURCE_CODE}}';
+        return 'dummy content';
+      });
+
+      const badPaths = [
+        '.env',
+        '.env.local',
+        'node_modules/foo/index.js',
+        '.git/config',
+        'package-lock.json',
+        'src/valid.ts'
+      ];
+
+      const result = await buildPlanningPrompt('request', mockContext, badPaths);
+      
+      // valid.ts のみが読み込まれ、その他は除外されるため 'dummy content' が1回だけ含まれるはず
+      expect(result).toContain('--- src/valid.ts ---');
+      expect(result).not.toContain('.env');
+      expect(result).not.toContain('node_modules');
+      expect(result).not.toContain('.git/config');
+      expect(result).not.toContain('package-lock.json');
+    });
+
+    it('すべてのファイルが除外された場合、フォールバックメッセージが含まれること', async () => {
+      vi.mocked(fs.readFile).mockImplementation(async (path) => {
+        if (typeof path === 'string' && path.includes('templates/planning.md')) return '{{TARGET_SOURCE_CODE}}';
+        return 'dummy content';
+      });
+
+      const result = await buildPlanningPrompt('request', mockContext, ['node_modules/a.ts', '.env']);
+      
+      expect(result).toContain('※有効な（機密情報を含まない）変更対象ファイルなし');
+    });
   });
 
   describe('buildExecutionPrompt', () => {

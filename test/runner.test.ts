@@ -4,13 +4,13 @@ import * as ai from '../src/ai';
 import * as prompt from '../src/prompt';
 import * as snapshot from '../src/snapshot';
 import * as config from '../src/utils/config';
-import { exec, execSync, execFileSync } from 'child_process';
+import { spawn, execSync, execFileSync } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
 // child_process のモック
 vi.mock('child_process', () => ({
-  exec: vi.fn(),
+  spawn: vi.fn(),
   execSync: vi.fn(),
   execFileSync: vi.fn()
 }));
@@ -37,6 +37,22 @@ vi.mock('../src/utils/git-worktree', () => ({
   getMainRepoRoot: () => '/mock/repo/main'
 }));
 
+function createMockSpawn(code: number, stdoutData: string = '', stderrData: string = '', emitError: Error | null = null) {
+  return (cmd: any, args: any, options: any) => {
+    return {
+      stdout: { on: vi.fn((event, cb) => { if (event === 'data' && stdoutData) cb(stdoutData); }) },
+      stderr: { on: vi.fn((event, cb) => { if (event === 'data' && stderrData) cb(stderrData); }) },
+      on: vi.fn((event, cb) => {
+        if (event === 'error' && emitError) {
+          cb(emitError);
+        } else if (event === 'close' && !emitError) {
+          cb(code);
+        }
+      })
+    } as any;
+  };
+}
+
 describe('runner module', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -54,21 +70,15 @@ describe('runner module', () => {
 
   describe('executeTests', () => {
     it('テストコマンドが成功した場合、exit code 0 を返すこと', async () => {
-      vi.mocked(exec).mockImplementation((cmd, options, cb: any) => {
-        cb(null, 'test passed', '');
-        return {} as any;
-      });
+      vi.mocked(spawn).mockImplementation(createMockSpawn(0, 'test passed', ''));
 
       const result = await executeTests('/mock/dir', 'npm test');
       expect(result).toEqual({ stdout: 'test passed', stderr: '', code: 0 });
-      expect(exec).toHaveBeenCalledWith('npm test', { cwd: '/mock/dir' }, expect.any(Function));
+      expect(spawn).toHaveBeenCalledWith('npm', ['test'], { cwd: '/mock/dir', shell: false });
     });
 
     it('テストコマンドが失敗した場合、その exit code を返すこと', async () => {
-      vi.mocked(exec).mockImplementation((cmd, options, cb: any) => {
-        cb({ code: 1 }, 'test output', 'test error');
-        return {} as any;
-      });
+      vi.mocked(spawn).mockImplementation(createMockSpawn(1, 'test output', 'test error'));
 
       const result = await executeTests(undefined, 'npm test test/spec.ts');
       expect(result).toEqual({ stdout: 'test output', stderr: 'test error', code: 1 });
@@ -122,19 +132,15 @@ describe('runner module', () => {
       } as any);
 
       // 1回目のテストは失敗、2回目のテストは成功
-      vi.mocked(exec).mockImplementationOnce((cmd, options, cb: any) => {
-        cb({ code: 1 }, '', 'error msg');
-        return {} as any;
-      }).mockImplementationOnce((cmd, options, cb: any) => {
-        cb(null, 'pass', '');
-        return {} as any;
-      });
+      vi.mocked(spawn)
+        .mockImplementationOnce(createMockSpawn(1, '', 'error msg'))
+        .mockImplementationOnce(createMockSpawn(0, 'pass', ''));
 
       const step = {
         id: 3,
         description: 'Test retry',
         target_files: ['src/test.ts'],
-        test_command: 'npm run test:specific'
+        test_command: 'npm test test/specific.ts'
       };
 
       const result = await executeStep(step, [], 'task_123', '/mock/dir');
@@ -142,7 +148,7 @@ describe('runner module', () => {
       // リトライを経て最終的なコードが返る
       expect(result.text).toBe('good code');
       expect(ai.generateContent).toHaveBeenCalledTimes(2);
-      expect(exec).toHaveBeenCalledTimes(2);
+      expect(spawn).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -152,10 +158,7 @@ describe('runner module', () => {
       // package.json が存在することをシミュレート
       vi.mocked(fs.access).mockResolvedValue(undefined);
       // 全体テストが成功する
-      vi.mocked(exec).mockImplementation((cmd, options, cb: any) => {
-        cb(null, 'all passed', '');
-        return {} as any;
-      });
+      vi.mocked(spawn).mockImplementation(createMockSpawn(0, 'all passed', ''));
 
       const batches = [
         { steps: [{ id: 1, description: 's1', target_files: [] }] }
@@ -164,7 +167,7 @@ describe('runner module', () => {
       await expect(executeBatches(batches, [], 'task_123', '/mock/dir')).resolves.toBeUndefined();
       
       expect(ai.generateContent).toHaveBeenCalledTimes(1);
-      expect(exec).toHaveBeenCalledTimes(1); // regression test
+      expect(spawn).toHaveBeenCalledTimes(1); // regression test
     });
 
     it('全体テストが修復後も失敗し続ける場合、エラーを投げること', async () => {
@@ -172,10 +175,7 @@ describe('runner module', () => {
       vi.mocked(fs.access).mockResolvedValue(undefined);
       
       // 常にテストが失敗する
-      vi.mocked(exec).mockImplementation((cmd, options, cb: any) => {
-        cb({ code: 1 }, '', 'regression error');
-        return {} as any;
-      });
+      vi.mocked(spawn).mockImplementation(createMockSpawn(1, '', 'regression error'));
 
       const batches = [
         { steps: [{ id: 1, description: 's1', target_files: [] }] }
@@ -187,7 +187,7 @@ describe('runner module', () => {
       // 初回実行 + リトライ実行
       expect(ai.generateContent).toHaveBeenCalledTimes(2);
       // 初回テスト + リトライ後テスト
-      expect(exec).toHaveBeenCalledTimes(2);
+      expect(spawn).toHaveBeenCalledTimes(2);
     });
 
     it('先行ステップが AMBIGUITY を返した場合、依存する後続ステップをスキップすること', async () => {

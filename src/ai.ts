@@ -31,6 +31,11 @@ export async function generateContent(
     ? `${systemInstruction}\n\n---\n\n${prompt}`
     : prompt;
 
+  // 事前にトークン数の見積もりを行い、上限を超えていないかチェックする（1トークン≒4文字と仮定）
+  const estimatedPromptTokens = Math.ceil(fullPrompt.length / 4);
+  const { usageTracker } = await import('./utils/usage.js');
+  usageTracker.checkLimit(estimatedPromptTokens);
+
   let command = 'gemini';
   let args: string[] = ['-o', 'json'];
   if (selectedModel) {
@@ -133,7 +138,6 @@ export async function generateContent(
   };
 
   // Usage ログを記録
-  const { usageTracker } = await import('./utils/usage.js');
   usageTracker.recordCall({
     model: selectedModel || 'unknown',
     provider,

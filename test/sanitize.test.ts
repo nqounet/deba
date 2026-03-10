@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { sanitizeTestCommand, validateFilePaths } from '../src/utils/sanitize';
+import { sanitizeTestCommand, validateFilePaths, scrubErrorMessage } from '../src/utils/sanitize';
 
 describe('sanitize module', () => {
   beforeEach(() => {
@@ -104,6 +104,31 @@ describe('sanitize module', () => {
       const paths = ['src/../src/index.ts'];
       const result = validateFilePaths(paths, projectRoot);
       expect(result).toEqual(['src/../src/index.ts']);
+    });
+  });
+
+  describe('scrubErrorMessage', () => {
+    it('エラーメッセージ内のプロジェクトルートパスをマスクすること', () => {
+      const msg = 'Error in /home/user/project/src/index.ts';
+      const result = scrubErrorMessage(msg, '/home/user/project');
+      expect(result).toBe('Error in <PROJECT_ROOT>/src/index.ts');
+    });
+
+    it('環境変数に依存するHOMEディレクトリをマスクすること', () => {
+      process.env.HOME = '/home/user';
+      const msg = 'Cannot write to /home/user/.deba/config.toml';
+      const result = scrubErrorMessage(msg, '/home/user/project');
+      expect(result).toBe('Cannot write to <HOME>/.deba/config.toml');
+    });
+
+    it('APIキーのような文字列をマスクすること', () => {
+      const msg = 'Failed with token sk-1234567890abcdefghij12345';
+      const result = scrubErrorMessage(msg, '/home/user/project');
+      expect(result).toBe('Failed with token sk-***');
+    });
+    
+    it('空文字列や未定義の入力を正しく処理すること', () => {
+      expect(scrubErrorMessage('', '/mock/root')).toBe('');
     });
   });
 });
