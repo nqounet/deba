@@ -1,4 +1,4 @@
-# Phase C: Reflection and Learning
+# Review: Reflection and Learning
 
 ## System Role
 あなたは直前のタスクを振り返る新人エンジニアです。

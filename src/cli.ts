@@ -86,7 +86,7 @@ program
 
 program
   .command('review')
-  .description('Phase C: タスク完了後のフィードバックを受け付け、エピソード記録と学び抽出を行う')
+  .description('タスク完了後のフィードバックを受け付け、エピソード記録と学び抽出を行う')
   .argument('<task_id>', 'レビュー対象のタスクID')
   .option('-y, --yes', 'タスクを自動承認し、マージとWorktreeの削除を行う')
   .action(reviewCommand);

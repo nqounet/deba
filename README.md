@@ -57,14 +57,14 @@ npm run deba -- maintenance promote
 | --- | --- | --- |
 | `deba install` | 初期セットアップ: 設定ファイルの作成とスキルのインストールを行う | なし |
 | `deba chat <message>` | LLM に直接メッセージを送り、応答を表示・スナップショット保存 | なし |
-| `deba plan <request>` | Phase A（計画生成）のみ実行 | `--file <path...>` |
+| `deba plan <request>` | Planning（計画生成）のみ実行 | `--file <path...>` |
 | `deba worker` | キュー (`todo`) を監視して非同期実行 | なし |
 | `deba worktree-add <repo_path> <branch_name>` | 指定リポジトリから Deba 管理配下に Worktree を作成 | `--name <worktree_name>` |
 | `deba validate <filepath>` | 計画ファイルのスキーマ + DAG 検証、実行バッチ表示 | なし |
 | `deba execute --step <id> --plan <filepath>` | 計画ファイルから単一ステップを実行 | `--step`, `--plan`（必須） |
-| `deba run <request>` | Phase A → Validate → Phase B を一気通貫実行 | `--file <path...>` |
+| `deba run <request>` | Planning → Validate → Execution を一気通貫実行 | `--file <path...>` |
 | `deba run-plan <filepath>` | 既存計画（JSON/YAML）を読み込み実行 | なし |
-| `deba review <task_id>` | Phase C（レビュー・学び抽出） | `-y, --yes` |
+| `deba review <task_id>` | Review（レビュー・学び抽出） | `-y, --yes` |
 
 ### `deba maintenance` subcommands
 
@@ -84,7 +84,7 @@ npm run deba -- maintenance promote
 
 ```text
 Starting Run Task: task_20260226_123456_abcd1234
---- Phase A (Plan) ---
+--- Planning ---
 Sending plan request to LLM (gemini-2.5-pro)...
 Extracting and parsing YAML...
 --- Validate ---
@@ -128,7 +128,7 @@ Sending Reflection request to LLM...
 Deba では、LLM との通信およびデータの保存において、**「主な読み手が誰か」**に基づいてフォーマットを使い分けています。
 
 - **JSON**: **実行エンジン（機械）向け**
-  - 用途: 実装計画 (Phase A) など、厳密な構造と自動パースが必要なデータ。
+  - 用途: 実装計画 (Planning) など、厳密な構造と自動パースが必要なデータ。
   - 理由: 構造の堅牢性と、実装コード（TypeScript）との親和性を優先。
 - **YAML**: **人間（エンジニア）向け**
   - 用途: 振り返り (Reflection)、スキル抽出、知見ベースなど。

@@ -17,6 +17,6 @@ run = ["npm link", "deba install"]
 [tasks.push]
 description = "バージョンを上げ（patch）、タグを付けてリモートにプッシュします"
 run = [
-  "npm version patch -m \"chore: release v%s\"",
+  "npm version patch -m \"chore(release): v%s\"",
   "git push origin main --tags",
 ]
