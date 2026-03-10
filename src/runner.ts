@@ -33,10 +33,11 @@ export function executeTests(workingDir?: string, command?: string): Promise<{ s
     const args = testCmd.split(/\s+/);
     const cmd = args.shift()!;
 
-    const child = spawn(cmd, args, { cwd: workingDir || process.cwd(), shell: false });
+    const child = spawn(cmd, args, { cwd: workingDir || process.cwd(), shell: process.platform === 'win32' });
 
     let stdout = '';
     let stderr = '';
+    let resolved = false;
 
     child.stdout.on('data', (data) => {
       stdout += data.toString();
@@ -47,11 +48,15 @@ export function executeTests(workingDir?: string, command?: string): Promise<{ s
     });
 
     child.on('error', (error) => {
+      if (resolved) return;
+      resolved = true;
       spinner.fail(`Test failed: ${testCmd} (${error.message})`);
       resolve({ stdout, stderr: stderr + error.message, code: 1 });
     });
 
     child.on('close', (code) => {
+      if (resolved) return;
+      resolved = true;
       if (code === 0) {
         spinner.succeed(`Test passed: ${testCmd}`);
       } else {
