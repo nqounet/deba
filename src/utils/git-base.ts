@@ -1,4 +1,4 @@
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
@@ -8,7 +8,7 @@ import os from 'os';
  */
 export function getRemoteOriginUrl(): string {
   try {
-    const output = execSync('git remote -v', { encoding: 'utf8' });
+    const output = execFileSync('git', ['remote', '-v'], { encoding: 'utf8' });
     const lines = output.split('\n');
     for (const line of lines) {
       if (line.startsWith('origin') && line.includes('(fetch)')) {
@@ -64,10 +64,10 @@ export function getMainRepoRoot(): string {
 
   try {
     // 1. まず現在のワーキングツリーのルートを取得
-    const currentToplevel = execSync('git rev-parse --show-toplevel', { encoding: 'utf8' }).trim();
+    const currentToplevel = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
     
     // 2. メインリポジトリの共通 .git ディレクトリを取得
-    const commonDir = execSync('git rev-parse --git-common-dir', { encoding: 'utf8' }).trim();
+    const commonDir = execFileSync('git', ['rev-parse', '--git-common-dir'], { encoding: 'utf8' }).trim();
     const absCommonDir = path.resolve(currentToplevel, commonDir);
     
     if (absCommonDir.endsWith('.git')) {

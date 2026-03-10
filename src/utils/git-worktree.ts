@@ -1,4 +1,4 @@
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { getRepoStorageRoot, getMainRepoRoot } from './git-base.js';
@@ -72,7 +72,7 @@ export function createWorktree(taskId: string): string {
 
     let reuseExisting = false;
     try {
-      const porcelain = execSync('git worktree list --porcelain', { encoding: 'utf8' });
+      const porcelain = execFileSync('git', ['worktree', 'list', '--porcelain'], { encoding: 'utf8' });
       const worktrees = porcelain.split('\n\n');
       for (const wtInfo of worktrees) {
         if (wtInfo.includes(`worktree ${worktreeDir}`) && wtInfo.includes(`branch refs/heads/${branchName}`)) {
@@ -85,11 +85,11 @@ export function createWorktree(taskId: string): string {
     if (reuseExisting) {
       console.log(`✅ Reusing existing worktree at ${worktreeDir}`);
     } else {
-      try { execSync(`git worktree remove ${worktreeDir} --force`, { stdio: 'ignore' }); } catch {}
-      try { execSync(`git branch -D ${branchName}`, { stdio: 'ignore' }); } catch {}
+      try { execFileSync('git', ['worktree', 'remove', worktreeDir, '--force'], { stdio: 'ignore' }); } catch {}
+      try { execFileSync('git', ['branch', '-D', branchName], { stdio: 'ignore' }); } catch {}
 
       console.log(`Creating new worktree...`);
-      execSync(`git worktree add -b ${branchName} ${worktreeDir}`, { stdio: 'inherit' });
+      execFileSync('git', ['worktree', 'add', '-b', branchName, worktreeDir], { stdio: 'inherit' });
     }
 
     const mainRoot = getMainRepoRoot();
@@ -134,7 +134,7 @@ export function getWorktreesToClean(porcelainOutput: string): string[] {
  * deba-wt- で始まる一時的な worktree をすべて削除する。
  */
 export function cleanWorktrees(): void {
-  const porcelain = execSync('git worktree list --porcelain', { encoding: 'utf8' });
+  const porcelain = execFileSync('git', ['worktree', 'list', '--porcelain'], { encoding: 'utf8' });
   const worktrees = getWorktreesToClean(porcelain);
   
   if (worktrees.length === 0) {
@@ -166,14 +166,14 @@ export function mergeWorktree(taskId: string): void {
     
     try {
       console.log(`Committing changes in worktree: ${worktreeDir}`);
-      execSync(`git add .`, { cwd: worktreeDir });
-      execSync(`git commit -m "Deba task execution: ${taskId}"`, { cwd: worktreeDir, stdio: 'ignore' });
+      execFileSync('git', ['add', '.'], { cwd: worktreeDir });
+      execFileSync('git', ['commit', '-m', `Deba task execution: ${taskId}`], { cwd: worktreeDir, stdio: 'ignore' });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       console.debug(`[Git] Commit skipped or failed in worktree (possibly no changes): ${message}`);
     }
 
-    execSync(`git merge --squash ${branchName}`, { stdio: 'inherit' });
+    execFileSync('git', ['merge', '--squash', branchName], { stdio: 'inherit' });
     console.log(`✅ Git merge --squash completed.`);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
@@ -189,7 +189,7 @@ export function removeWorktree(worktreeDir: string, taskId: string): void {
   console.log(`\n--- Removing Git Worktree ---`);
 
   try {
-    execSync(`git worktree remove ${worktreeDir} --force`, { stdio: 'pipe' });
+    execFileSync('git', ['worktree', 'remove', worktreeDir, '--force'], { stdio: 'pipe' });
   } catch (error: any) {
     const stderr = error.stderr?.toString() || '';
     const knownErrors = ['is not a working tree', 'not a git repository', 'does not exist'];
@@ -199,7 +199,7 @@ export function removeWorktree(worktreeDir: string, taskId: string): void {
   }
 
   try {
-    execSync(`git branch -D ${branchName}`, { stdio: 'pipe' });
+    execFileSync('git', ['branch', '-D', branchName], { stdio: 'pipe' });
   } catch (error: any) {
     const stderr = error.stderr?.toString() || '';
     const knownErrors = ['not found'];

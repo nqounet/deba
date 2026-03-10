@@ -20,7 +20,8 @@ vi.mock('fs/promises', () => ({
   readFile: vi.fn(),
   writeFile: vi.fn(),
   mkdir: vi.fn(),
-  access: vi.fn()
+  access: vi.fn(),
+  rename: vi.fn()
 }));
 
 // 内部モジュールのモック
@@ -74,7 +75,7 @@ describe('runner module', () => {
 
       const result = await executeTests('/mock/dir', 'npm test');
       expect(result).toEqual({ stdout: 'test passed', stderr: '', code: 0 });
-      expect(spawn).toHaveBeenCalledWith('npm', ['test'], { cwd: '/mock/dir', shell: false });
+      expect(spawn).toHaveBeenCalledWith('npm test', { cwd: '/mock/dir', shell: true });
     });
 
     it('テストコマンドが失敗した場合、その exit code を返すこと', async () => {
@@ -101,7 +102,8 @@ describe('runner module', () => {
       const result = await executeStep(step, [], 'task_123', '/mock/dir');
 
       expect(result.text).toBe('console.log("hello");');
-      expect(fs.writeFile).toHaveBeenCalledWith(expect.stringContaining(path.normalize('src/test.ts')), 'console.log("hello");', 'utf-8');
+      expect(fs.writeFile).toHaveBeenCalledWith(expect.stringContaining('.tmp.'), 'console.log("hello");', 'utf-8');
+      expect(fs.rename).toHaveBeenCalled();
       expect(execFileSync).toHaveBeenCalledWith('git', ['add', 'src/test.ts'], { cwd: '/mock/dir' });
     });
 

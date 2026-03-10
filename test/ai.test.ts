@@ -4,15 +4,16 @@ import { spawn } from 'child_process';
 
 vi.mock('child_process', () => ({
   spawn: vi.fn(),
-  execSync: vi.fn((cmd) => {
-    if (cmd === 'git remote -v') {
+  execFileSync: vi.fn((cmd, args) => {
+    if (cmd === 'git' && args.includes('remote') && args.includes('-v')) {
       return 'origin\thttps://github.com/nqounet/deba.git (fetch)\norigin\thttps://github.com/nqounet/deba.git (push)';
     }
-    if (cmd.includes('git rev-parse')) {
+    if (cmd === 'git' && args.includes('rev-parse')) {
       return '/mock/repo/root';
     }
     return '';
-  })
+  }),
+  execSync: vi.fn()
 }));
 
 vi.mock('ora', () => ({
@@ -91,7 +92,7 @@ describe('generateContent', () => {
 
     const result = await generateContent('Test prompt', codexConfig);
 
-    expect(spawn).toHaveBeenCalledWith('codex', ['exec', '-', '--json', '--dangerously-bypass-approvals-and-sandbox', '-m', 'codex-model']);
+    expect(spawn).toHaveBeenCalledWith('codex', ['exec', '-', '--json', '-m', 'codex-model']);
     expect(result.text).toBe('Codex Response');
     expect(result.meta.provider).toBe('codex');
     expect(result.meta.usage.tokens).toBe(50);

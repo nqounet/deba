@@ -48,7 +48,6 @@ export async function generateContent(
       'exec',
       '-', // stdinから読み込む
       '--json',
-      '--dangerously-bypass-approvals-and-sandbox',
     ];
     if (selectedModel) {
       args.push('-m', selectedModel);

@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { execSync } from 'child_process';
+import { spawnSync } from 'child_process';
 import { generateContent } from './ai.js';
 import { getMainRepoRoot, getRepoStorageRoot } from './utils/git-base.js';
 import { buildIngestionPrompt } from './prompt.js';
@@ -26,7 +26,12 @@ export async function performIngestion(): Promise<string> {
   // 1. ファイルツリーの取得 (git ls-files を使用してノイズを除去)
   let fileTree = '';
   try {
-    fileTree = execSync('git ls-files | head -n 100', { cwd: rootDir, encoding: 'utf8' });
+    // git ls-files の出力を取得し、最初の100行を取得する
+    const gitResult = spawnSync('git', ['ls-files'], { cwd: rootDir, encoding: 'utf8' });
+    if (gitResult.error || gitResult.status !== 0) {
+        throw new Error('git ls-files failed');
+    }
+    fileTree = gitResult.stdout.split('\n').slice(0, 100).join('\n');
   } catch {
     // Git管理下でない場合のフォールバック（簡易的なreaddir）
     const files = await fs.readdir(rootDir);

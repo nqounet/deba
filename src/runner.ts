@@ -30,10 +30,9 @@ export function executeTests(workingDir?: string, command?: string): Promise<{ s
   spinner.start(`Running test: ${testCmd}...`);
   
   return new Promise((resolve) => {
-    const args = testCmd.split(/\s+/);
-    const cmd = args.shift()!;
-
-    const child = spawn(cmd, args, { cwd: workingDir || process.cwd(), shell: process.platform === 'win32' });
+    // shell: true を使用することで、OSのシェルにコマンドラインのパースを任せる
+    // （コマンド自体は直前で sanitizeTestCommand により安全確認済み）
+    const child = spawn(testCmd, { cwd: workingDir || process.cwd(), shell: true });
 
     let stdout = '';
     let stderr = '';

@@ -1,4 +1,4 @@
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import path from 'path';
 import fs from 'fs/promises';
 import { getMainRepoRoot } from '../utils/git-base.js';
@@ -38,7 +38,7 @@ export async function worktreeAddCommand(repoPath: string, branchName: string, o
 
     // 4. git worktree add の実行
     // ターゲットディレクトリを絶対パスで指定し、リポジトリパスをカレントディレクトリとして実行する
-    execSync(`git worktree add "${targetPath}" "${branchName}"`, {
+    execFileSync('git', ['worktree', 'add', targetPath, branchName], {
       cwd: absoluteRepoPath,
       stdio: 'inherit'
     });
