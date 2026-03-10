@@ -20,7 +20,7 @@ export async function applyFileChange(baseDir: string, filePath: string, content
   await fs.mkdir(dirName, { recursive: true });
 
   // アトミックな書き込みのために一時ファイルを使用
-  const tmpPath = `${absPath}.tmp.${Date.now()}`;
+  const tmpPath = `${absPath}.tmp.${Date.now()}-${Math.random().toString(36).slice(2)}`;
   await fs.writeFile(tmpPath, content, 'utf-8');
   await fs.rename(tmpPath, absPath);
 

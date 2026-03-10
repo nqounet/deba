@@ -100,6 +100,7 @@ export function scrubErrorMessage(errorMessage: string, projectRoot: string = pr
   // 便宜上、sk-[A-Za-z0-9]{20,} や xoxb-[A-Za-z0-9\-]+ などを伏せる
   // AWS Keys
   scrubbed = scrubbed.replace(/(A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}/g, '<AWS_KEY_ID>');
+  scrubbed = scrubbed.replace(/(?<![A-Za-z0-9/+=])[A-Za-z0-9/+=]{40}(?![A-Za-z0-9/+=])/g, '<AWS_SECRET_KEY>');
   // Google Cloud Service Account
   scrubbed = scrubbed.replace(/"private_key":\s*"-----BEGIN PRIVATE KEY-----\\n.*?\\n-----END PRIVATE KEY-----\\n"/gs, '"private_key": "<GCP_PRIVATE_KEY>"');
   // Generic secrets (sk-..., ghp_..., xox..., Bearer tokens)
