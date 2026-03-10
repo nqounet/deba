@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.13] - 2026-03-11
+### Security & Safety
+- **High**: Prevented OS command injection in Git operations (`createWorktree`, `getMainRepoRoot`, `cleanWorktrees`, `mergeWorktree`, `removeWorktree`, `review`, and `ingestion`) by migrating from `execSync` to `execFileSync` or `spawnSync` with array arguments to prevent shell expansion.
+- **Medium**: Fixed a test command parsing bug in `runner.ts` that broke on quoted arguments by using `shell: true` with `spawn`, relying on the OS shell for robust parsing after command sanitization.
+- **Medium**: Mitigated a sandbox bypass risk in `ai.ts` by removing the `--dangerously-bypass-approvals-and-sandbox` flag from the `codex` execution.
+- **Low**: Enhanced `scrubErrorMessage` in `sanitize.ts` to additionally mask AWS Secret Access Keys, GCP private keys, and generic bearer tokens.
+- **Low**: Ensured atomic file writes in `applyFileChange` using temporary files with randomized names (`Date.now() + Math.random()`) and `fs.rename`, preventing incomplete writes during unexpected terminations.
+
 ## [0.11.12] - 2026-03-10
 ### Security & Safety
 - Prevented path traversal in `applyFileChange` by validating that output paths strictly reside within the project boundary.
