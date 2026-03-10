@@ -98,9 +98,17 @@ export function scrubErrorMessage(errorMessage: string, projectRoot: string = pr
 
   // 3. よくある機密情報のパターン（APIキー、トークンなど）の簡易マスク（必要に応じて拡張）
   // 便宜上、sk-[A-Za-z0-9]{20,} や xoxb-[A-Za-z0-9\-]+ などを伏せる
+  // AWS Keys
+  scrubbed = scrubbed.replace(/(A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}/g, '<AWS_KEY_ID>');
+  // Google Cloud Service Account
+  scrubbed = scrubbed.replace(/"private_key":\s*"-----BEGIN PRIVATE KEY-----\\n.*?\\n-----END PRIVATE KEY-----\\n"/gs, '"private_key": "<GCP_PRIVATE_KEY>"');
+  // Generic secrets (sk-..., ghp_..., xox..., Bearer tokens)
   scrubbed = scrubbed.replace(/sk-[A-Za-z0-9]{20,}/g, 'sk-***');
   scrubbed = scrubbed.replace(/xox[bap]-[A-Za-z0-9\-]{10,}/g, 'xox?-***');
   scrubbed = scrubbed.replace(/(gh[pousr]_[A-Za-z0-9]{36,})/g, 'gh_***');
+  scrubbed = scrubbed.replace(/Bearer\s+[A-Za-z0-9\-_=]+\.[A-Za-z0-9\-_=]+\.?[A-Za-z0-9\-_=]*/g, 'Bearer <TOKEN>');
+  // Passwords in URLs (e.g., https://user:pass@host)
+  scrubbed = scrubbed.replace(/(https?:\/\/)([^:]+):([^@]+)@/g, '$1$2:<PASSWORD>@');
 
   return scrubbed;
 }

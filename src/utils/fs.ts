@@ -14,10 +14,16 @@ export async function applyFileChange(baseDir: string, filePath: string, content
   }
 
   const absPath = path.resolve(baseDir, filePath);
+  const dirName = path.dirname(absPath);
   
   // ディレクトリが存在しない場合は作成
-  await fs.mkdir(path.dirname(absPath), { recursive: true });
-  await fs.writeFile(absPath, content, 'utf-8');
+  await fs.mkdir(dirName, { recursive: true });
+
+  // アトミックな書き込みのために一時ファイルを使用
+  const tmpPath = `${absPath}.tmp.${Date.now()}`;
+  await fs.writeFile(tmpPath, content, 'utf-8');
+  await fs.rename(tmpPath, absPath);
+
   console.log(`✅ Applied changes to: ${filePath} (in ${baseDir})`);
 
   // Git リポジトリ内であれば git add を実行する
