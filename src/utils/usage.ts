@@ -23,6 +23,7 @@ export interface UsageSession {
 class UsageTracker {
   private session: UsageSession;
   private logDir: string;
+  private readonly MAX_TOKENS_PER_SESSION = 500000; // 50万トークンをハードリミットとする
 
   constructor() {
     this.logDir = path.join(getRepoStorageRoot(), 'brain', 'usage_logs');
@@ -33,6 +34,21 @@ class UsageTracker {
       totalCalls: 0,
       calls: [],
     };
+  }
+
+  /**
+   * トークン上限をチェックする
+   * @param estimatedAdditionalTokens これから消費する見込みのプロンプトトークン数
+   */
+  public checkLimit(estimatedAdditionalTokens: number = 0) {
+    let currentTotal = estimatedAdditionalTokens;
+    this.session.calls.forEach(c => {
+      currentTotal += (c.prompt_tokens || 0) + (c.completion_tokens || 0);
+    });
+
+    if (currentTotal > this.MAX_TOKENS_PER_SESSION) {
+      throw new Error(`🚨 トークン利用制限エラー: セッションの合計利用トークン（見積もり含む）が上限の ${this.MAX_TOKENS_PER_SESSION} を超えました（現在: ${currentTotal}）。過剰なコスト発生を防ぐため実行を停止します。`);
+    }
   }
 
   /**
