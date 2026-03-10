@@ -77,6 +77,7 @@ If a task (e.g., `deba run`) fails or halts during the execution phase (Executio
 | `deba maintenance promote` | Interactively review pending proposals/learnings and promote accepted items. | `-y`, `--yes` to auto-approve all items |
 | `deba maintenance consolidate-skills` | Refactor and consolidate stored skill files. | None |
 | `deba maintenance setup-skill` | Install project `skills/deba/SKILL.md` to `~/.agents/skills/deba/SKILL.md`. | None |
+| `deba maintenance setup-skr` | Install `semantic-knowledge-repository` skill. | None |
 | `deba maintenance setup-config` | Initialize `~/.deba/config.toml` with default settings. | None |
 
 ## Configuration

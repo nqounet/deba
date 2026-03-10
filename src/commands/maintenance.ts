@@ -2,7 +2,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as readline from 'readline';
 import * as os from 'os';
-import { execSync } from 'child_process';
+import { spawn } from 'child_process';
 import { listSkills as listSkillsInfo, promoteToSkill } from '../skills.js';
 import { getMainRepoRoot, getRepoStorageRoot } from '../utils/git-base.js';
 import { cleanWorktrees } from '../utils/git-worktree.js';
@@ -14,6 +14,11 @@ import { buildMaintenancePrompt } from '../prompt.js';
 
 const PROPOSALS_DIR = path.join(getRepoStorageRoot(), 'brain', 'skills', 'proposals');
 const SKILLS_DIR = path.join(getRepoStorageRoot(), 'brain', 'skills');
+
+const AGENTS_DIR_NAME = '.agents';
+const SKILLS_DIR_NAME = 'skills';
+const SKR_DIR_NAME = 'semantic-knowledge-repository';
+const SKR_REPO_URL = 'https://github.com/nqounet/semantic-knowledge-repository.git';
 
 function askQuestion(query: string): Promise<string> {
   const rl = readline.createInterface({
@@ -36,27 +41,43 @@ export async function installCommand() {
 }
 
 export async function setupSKRCommand() {
-  const skrDir = path.join(os.homedir(), '.agents', 'skills', 'semantic-knowledge-repository');
+  const skrDir = path.join(os.homedir(), AGENTS_DIR_NAME, SKILLS_DIR_NAME, SKR_DIR_NAME);
   try {
     await fs.access(skrDir);
-    console.log('✅ semantic-knowledge-repository は既にインストールされています。');
+    console.log(`✅ ${SKR_DIR_NAME} は既にインストールされています。`);
   } catch (error: any) {
     if (error.code !== 'ENOENT') {
-      console.error(`❌ エラー: semantic-knowledge-repository ディレクトリへのアクセスに失敗しました:`, error.message);
+      console.error(`❌ エラー: ${SKR_DIR_NAME} ディレクトリへのアクセスに失敗しました:`, error.message);
       return;
     }
     
-    console.log('📦 semantic-knowledge-repository をダウンロードしています...');
+    console.log(`📦 ${SKR_DIR_NAME} をダウンロードしています...`);
     try {
-      const targetDir = path.join(os.homedir(), '.agents', 'skills');
+      const targetDir = path.join(os.homedir(), AGENTS_DIR_NAME, SKILLS_DIR_NAME);
       await fs.mkdir(targetDir, { recursive: true });
-      execSync('git clone https://github.com/nqounet/semantic-knowledge-repository.git', {
-        cwd: targetDir,
-        stdio: 'inherit'
+      
+      await new Promise<void>((resolve, reject) => {
+        const gitClone = spawn('git', ['clone', SKR_REPO_URL], {
+          cwd: targetDir,
+          stdio: 'inherit'
+        });
+        
+        gitClone.on('close', (code) => {
+          if (code === 0) {
+            resolve();
+          } else {
+            reject(new Error(`git clone process exited with code ${code}`));
+          }
+        });
+        
+        gitClone.on('error', (err) => {
+          reject(err);
+        });
       });
-      console.log('✅ semantic-knowledge-repository をインストールしました。');
+      
+      console.log(`✅ ${SKR_DIR_NAME} をインストールしました。`);
     } catch (cloneError: any) {
-      console.error(`❌ エラー: semantic-knowledge-repository のインストールに失敗しました:`, cloneError.message);
+      console.error(`❌ エラー: ${SKR_DIR_NAME} のインストールに失敗しました:`, cloneError.message);
     }
   }
 }
