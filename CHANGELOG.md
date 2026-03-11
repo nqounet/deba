@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.14] - 2026-03-12
+### Changed
+- Refactored AI providers using the Strategy pattern for improved SOLID compliance.
+### Fixed
+- Mitigated prompt injection risks and improved error handling in worktree operations.
+
 ## [0.11.13] - 2026-03-11
 ### Security & Safety
 - **High**: Prevented OS command injection in Git operations (`createWorktree`, `getMainRepoRoot`, `cleanWorktrees`, `mergeWorktree`, `removeWorktree`, `review`, and `ingestion`) by migrating from `execSync` to `execFileSync` or `spawnSync` with array arguments to prevent shell expansion.
