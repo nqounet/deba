@@ -182,31 +182,42 @@ export function mergeWorktree(taskId: string): void {
 }
 
 /**
+ * Git コマンドを実行し、既知のエラーメッセージであれば警告を出さずに無視する
+ */
+function tryExecGit(args: string[], knownErrors: string[], warnMessage: string): void {
+  try {
+    execFileSync('git', args, { stdio: 'pipe' });
+  } catch (error: any) {
+    const stderr = error.stderr?.toString() || '';
+    const stdout = error.stdout?.toString() || '';
+    const output = `${stderr}\n${stdout}`.toLowerCase();
+    
+    const isKnownError = knownErrors.some(e => output.includes(e.toLowerCase()));
+    if (!isKnownError) {
+      const commandStr = `git ${args.join(' ')}`;
+      console.warn(`⚠️ ${warnMessage} ('${commandStr}'): ${stderr.trim() || error.message}`);
+    }
+  }
+}
+
+/**
  * 指定したパスの Git Worktree を削除する
  */
 export function removeWorktree(worktreeDir: string, taskId: string): void {
   const branchName = `feature/${taskId}`;
   console.log(`\n--- Removing Git Worktree ---`);
 
-  try {
-    execFileSync('git', ['worktree', 'remove', worktreeDir, '--force'], { stdio: 'pipe' });
-  } catch (error: any) {
-    const stderr = error.stderr?.toString() || '';
-    const knownErrors = ['is not a working tree', 'not a git repository', 'does not exist'];
-    if (!knownErrors.some(e => stderr.includes(e))) {
-      console.warn(`⚠️ Failed to remove worktree: ${stderr.trim() || error.message}`);
-    }
-  }
+  tryExecGit(
+    ['worktree', 'remove', worktreeDir, '--force'],
+    ['is not a working tree', 'not a git repository', 'does not exist'],
+    'Failed to remove worktree'
+  );
 
-  try {
-    execFileSync('git', ['branch', '-D', branchName], { stdio: 'pipe' });
-  } catch (error: any) {
-    const stderr = error.stderr?.toString() || '';
-    const knownErrors = ['not found'];
-    if (!knownErrors.some(e => stderr.includes(e))) {
-      console.warn(`⚠️ Failed to remove branch: ${stderr.trim() || error.message}`);
-    }
-  }
+  tryExecGit(
+    ['branch', '-D', branchName],
+    ['not found'],
+    'Failed to remove branch'
+  );
 
   console.log(`✅ Worktree and branch ${branchName} removed.`);
 }
