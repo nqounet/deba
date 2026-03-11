@@ -113,3 +113,33 @@ export function scrubErrorMessage(errorMessage: string, projectRoot: string = pr
 
   return scrubbed;
 }
+
+/**
+ * プロンプトインジェクションを軽減するため、文字列内の XML タグをサニタイズする。
+ * LLMにシステムプロンプトとして誤認される可能性のある特定のタグや、
+ * コンテキストを区切るタグの脱出（</タグ>）を無効化する。
+ * フロントエンドのコード（HTML/TSX）を破壊しないよう、対象を限定している。
+ *
+ * @param text サニタイズ対象のユーザー入力またはタスク結果
+ * @param contextTag 現在囲まれているコンテキストのタグ名（例: 'user_feedback'）。このタグの終了タグをエスケープする。
+ * @returns サニタイズ済みの文字列
+ */
+export function sanitizeForPrompt(text: string, contextTag?: string): string {
+  if (typeof text !== 'string') return '';
+  if (!text) return '';
+  
+  let sanitized = text;
+
+  if (contextTag) {
+    // 囲まれているコンテキストタグの終了タグによる脱出を防ぐ
+    const closingTagRegex = new RegExp(`<\\s*/\\s*${contextTag}\\s*>`, 'gi');
+    sanitized = sanitized.replace(closingTagRegex, `<\\/${contextTag}>`);
+  }
+
+  // システム指示と誤認されやすいタグ（<system_instructions>, <rule> など）を無効化
+  sanitized = sanitized.replace(/<\s*\/?\s*(system_instructions?|instructions?|prompt|rule|role)\s*>/gi, (match) => {
+    return match.replace('<', '&lt;').replace('>', '&gt;');
+  });
+
+  return sanitized;
+}

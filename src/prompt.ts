@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
-import { validateFilePaths } from './utils/sanitize.js';
+import { validateFilePaths, sanitizeForPrompt } from './utils/sanitize.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,7 +35,7 @@ export interface PlanningContext {
 export async function buildPlanningPrompt(request: string, context: PlanningContext, targetFilePaths: string[] = []): Promise<string> {
   let template = await loadTemplate('planning');
 
-  template = template.replace(/\{\{USER_REQUEST\}\}/g, request);
+  template = template.replace(/\{\{USER_REQUEST\}\}/g, sanitizeForPrompt(request, 'user_request'));
   template = template.replace(/\{\{PROJECT_SUMMARY\}\}/g, context.ingestion);
 
   let targetSourceCode = '※変更対象ファイルの指定なし';
@@ -114,8 +114,8 @@ export async function buildReflectionPrompt(
 ): Promise<string> {
   let template = await loadTemplate('reflection');
 
-  template = template.replace('{{EPISODE_SUMMARY}}', episodeSummary);
-  template = template.replace('{{USER_CORRECTIONS}}', userCorrections);
+  template = template.replace('{{EPISODE_SUMMARY}}', sanitizeForPrompt(episodeSummary, 'episode_summary'));
+  template = template.replace('{{USER_CORRECTIONS}}', sanitizeForPrompt(userCorrections, 'user_feedback'));
   template = template.replace('{{CURRENT_SKILLS}}', currentSkills || '（まだスキルの蓄積なし）');
 
   return template;
@@ -130,8 +130,8 @@ export async function buildSkillSuggestionPrompt(
 ): Promise<string> {
   let template = await loadTemplate('skill_suggestion');
 
-  template = template.replace('{{TASK_DESCRIPTION}}', taskDescription);
-  template = template.replace('{{TASK_RESULT}}', taskResult);
+  template = template.replace('{{TASK_DESCRIPTION}}', sanitizeForPrompt(taskDescription, 'task_description'));
+  template = template.replace('{{TASK_RESULT}}', sanitizeForPrompt(taskResult, 'task_result'));
 
   return template;
 }
