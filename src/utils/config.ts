@@ -6,6 +6,7 @@ import { parse } from 'smol-toml';
 export interface AIConfig {
   provider: 'gemini' | 'codex';
   model?: string;
+  yolo?: boolean;
 }
 
 export interface DebaConfig {
@@ -19,9 +20,11 @@ const DEFAULT_CONFIG: DebaConfig = {
   ai: {
     planning: {
       provider: 'gemini',
+      yolo: true,
     },
     execution: {
       provider: 'gemini',
+      yolo: true,
     },
   },
 };
@@ -44,10 +47,12 @@ export async function loadConfig(forceReload = false): Promise<DebaConfig> {
         planning: {
           provider: parsed?.ai?.planning?.provider ?? parsed?.ai?.provider ?? DEFAULT_CONFIG.ai.planning.provider,
           model: parsed?.ai?.planning?.model ?? parsed?.ai?.model,
+          yolo: parsed?.ai?.planning?.yolo ?? parsed?.ai?.yolo ?? true,
         },
         execution: {
           provider: parsed?.ai?.execution?.provider ?? parsed?.ai?.provider ?? DEFAULT_CONFIG.ai.execution.provider,
           model: parsed?.ai?.execution?.model ?? parsed?.ai?.flash_model,
+          yolo: parsed?.ai?.execution?.yolo ?? parsed?.ai?.yolo ?? true,
         },
       },
     };
@@ -69,10 +74,12 @@ export async function initConfig() {
       const content = `[ai.planning]
 # provider = "gemini"
 # model = ""
+# yolo = true
 
 [ai.execution]
 # provider = "gemini"
 # model = ""
+# yolo = true
 `;
       await fs.writeFile(CONFIG_PATH, content, 'utf-8');
       console.log(`✅ 設定ファイルを初期化しました: ${CONFIG_PATH}`);

@@ -219,5 +219,16 @@ export function removeWorktree(worktreeDir: string, taskId: string): void {
     'Failed to remove branch'
   );
 
+  // フォールバック: Git管理外のファイルが残っている場合などにディレクトリを強制削除
+  if (fs.existsSync(worktreeDir)) {
+    try {
+      fs.rmSync(worktreeDir, { recursive: true, force: true });
+      console.debug(`[Git] Removed leftover directory: ${worktreeDir}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`⚠️ Failed to remove directory ${worktreeDir}: ${message}`);
+    }
+  }
+
   console.log(`✅ Worktree and branch ${branchName} removed.`);
 }
