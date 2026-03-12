@@ -8,6 +8,7 @@ import { buildSkillSuggestionPrompt } from '../prompt.js';
 import { generateContent } from '../ai.js';
 import { extractAndParseYaml } from '../yamlParser.js';
 import { loadConfig } from '../utils/config.js';
+import { sanitizeForPrompt } from '../utils/sanitize.js';
 
 const PROPOSALS_DIR = path.join(getRepoStorageRoot(), 'brain', 'skills', 'proposals');
 const STALE_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
@@ -17,7 +18,9 @@ export async function suggestSkillFromSuccess(taskDescription: string, taskResul
   console.log(`\n[Worker] 💡 成功体験からスキルを抽出しています...`);
   
   try {
-    const prompt = await buildSkillSuggestionPrompt(taskDescription, taskResult);
+    const sanitizedDescription = sanitizeForPrompt(taskDescription);
+    const sanitizedResult = sanitizeForPrompt(taskResult);
+    const prompt = await buildSkillSuggestionPrompt(sanitizedDescription, sanitizedResult);
     const config = await loadConfig();
     const { text } = await generateContent(prompt, config.ai.execution);
     

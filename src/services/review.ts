@@ -10,6 +10,7 @@ import { saveKnowledge, Knowledge } from '../knowledge.js';
 import { getRepoStorageRoot } from '../utils/git-base.js';
 import { loadConfig } from '../utils/config.js';
 import { updateTrust, getTrustData, calculateTrustLevel, TrustData } from '../trust.js';
+import { sanitizeForPrompt } from '../utils/sanitize.js';
 
 export interface ReviewContext {
   originalRequest: string;
@@ -81,7 +82,9 @@ export async function processReviewResult(taskId: string, context: ReviewContext
 }
 
 export async function executeReflection(taskId: string, context: ReviewContext, feedback: string, episodePath: string): Promise<{ parsedObject: any, reflectionText: string }> {
-  const episodeSummary = `タスクID: ${taskId}\nユーザー要望: ${context.originalRequest}\n実行ステップ: ${context.stepsExecuted.join(', ')}`;
+  const sanitizedRequest = sanitizeForPrompt(context.originalRequest);
+  const sanitizedFeedback = sanitizeForPrompt(feedback, 'user_feedback');
+  const episodeSummary = `タスクID: ${taskId}\nユーザー要望: ${sanitizedRequest}\n実行ステップ: ${context.stepsExecuted.join(', ')}`;
 
   let currentSkills = '';
   try {
@@ -98,7 +101,7 @@ export async function executeReflection(taskId: string, context: ReviewContext, 
     console.debug(`Could not load current skills: ${error}`);
   }
 
-  const reflectionPrompt = await buildReflectionPrompt(episodeSummary, feedback, currentSkills);
+  const reflectionPrompt = await buildReflectionPrompt(episodeSummary, sanitizedFeedback, currentSkills);
   const systemInstruction = "あなたは自己評価を行う新人エンジニアです。指示に従い、YAML形式のみで出力してください。";
   const config = await loadConfig();
   const { text: reflectionText, meta } = await generateContent(reflectionPrompt, config.ai.execution, systemInstruction);
