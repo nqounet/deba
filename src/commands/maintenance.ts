@@ -118,6 +118,9 @@ export async function setupSkillCommand() {
     await fs.mkdir(targetDir, { recursive: true });
     await fs.copyFile(sourcePath, targetPath);
     console.log(`✅ SKILL.md をインストールしました: ${targetPath}`);
+    
+    // Deba は Semantic Knowledge Repository (SKR) に依存しているため、同時にセットアップする
+    await setupSKRCommand();
   } catch (error) {
     console.error(`❌ エラー: SKILL.md のインストールに失敗しました:`, error);
   }
