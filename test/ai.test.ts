@@ -68,7 +68,7 @@ describe('generateContent', () => {
 
     const result = await generateContent('Test prompt', mockAiConfig);
 
-    expect(spawn).toHaveBeenCalledWith('gemini', ['-o', 'json', '-m', 'gemini-test-model']);
+    expect(spawn).toHaveBeenCalledWith('gemini', ['-o', 'json', '--yolo', '-m', 'gemini-test-model']);
     expect(mockProcess.stdin.write).toHaveBeenCalledWith('Test prompt');
     expect(result.text).toBe('Valid JSON Response');
     expect(result.meta.provider).toBe('gemini');
@@ -92,7 +92,7 @@ describe('generateContent', () => {
 
     const result = await generateContent('Test prompt', codexConfig);
 
-    expect(spawn).toHaveBeenCalledWith('codex', ['exec', '-', '--json', '-m', 'codex-model']);
+    expect(spawn).toHaveBeenCalledWith('codex', ['exec', '-', '--json', '--dangerously-bypass-approvals-and-sandbox', '-m', 'codex-model']);
     expect(result.text).toBe('Codex Response');
     expect(result.meta.provider).toBe('codex');
     expect(result.meta.usage.tokens).toBe(50);

@@ -54,6 +54,10 @@ If a task (e.g., `deba run`) fails, produces incorrect output, or halts during e
   - When mocking libraries with method chaining (builder pattern), apply `mockReturnThis()` to all intermediate methods to ensure the chain remains intact.
 
 ### Deba Specific Conventions
+- **Autonomous Execution Policy (YOLO mode)**: 
+  - Deba operates in `yolo` mode by default, meaning AI-generated commands are executed without explicit user confirmation.
+  - When generating plans or performing tasks, assume full autonomy. Do not include unnecessary steps for "user approval" or "safety checks" in the execution flow.
+  - Rely on the isolated Git Worktree environment for safety rather than interactive confirmation.
 - **Localization**: Output error messages and logs in Japanese to facilitate user communication.
 - **Execution Safety**: 
   - **Commit before Run**: Always commit changes in the main working tree before running tasks that use Git Worktrees (e.g., `deba run-plan`), as uncommitted changes are not reflected in isolated environments.

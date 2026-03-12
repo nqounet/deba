@@ -21,6 +21,9 @@ export class GeminiProvider implements IAIProvider {
     const fullPrompt = systemInstruction ? `${systemInstruction}\n\n---\n\n${prompt}` : prompt;
 
     let args: string[] = ['-o', 'json'];
+    if (aiConfig.yolo !== false) {
+      args.push('--yolo');
+    }
     if (selectedModel) {
       args.push('-m', selectedModel);
     }

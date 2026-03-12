@@ -21,6 +21,9 @@ export class CodexProvider implements IAIProvider {
     const fullPrompt = systemInstruction ? `${systemInstruction}\n\n---\n\n${prompt}` : prompt;
 
     let args: string[] = ['exec', '-', '--json'];
+    if (aiConfig.yolo !== false) {
+      args.push('--dangerously-bypass-approvals-and-sandbox');
+    }
     if (selectedModel) {
       args.push('-m', selectedModel);
     }
